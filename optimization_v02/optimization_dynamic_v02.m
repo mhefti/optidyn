@@ -27,11 +27,12 @@ slaves = 16;
 timespan = 36;
 
 % set the timeout [s]
-timeout = 180;
+timeout = 5;
 
 % choose the algorithm to be used
 algorithm = 'fminsearchbnd'; 
 parallel = 'noparallel'; % or 'noparallel'
+
 % available options: 
 % -------------------------------------------------------------------------
 % algorithm         parallel?       comments:

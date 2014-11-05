@@ -43,7 +43,6 @@ end
 
 % update conditions for fitting
 newconditions = expinfo.conditions;
-exptimes = newconditions(1,:);
 newconditions(expinfo.fparamids(1),:) = params(6); % mtc
 % newconditions(expinfo.fparamids(2),:) = params(7); % mtc
 dlmwrite('conditions.dat',newconditions,'\t')
@@ -99,7 +98,7 @@ while running == true && exist(succ_dump,'file') == false
         end
         
         system(taskkill);
-        fprintf('-------------------TIMEOUT----------------------------\n')
+        fprintf('-------------------TIMEOUT--------------------------\n')
         timeup = true;
         running = false;
     end
@@ -115,12 +114,14 @@ if timeup || noerr_flag ~= true
     
     for i = 1:expinfo.numexp
         
+        outdata.(sfield('time',i)) = linspace(1,expinfo.numpoints(i),expinfo.numpoints(i));
+        
         if expinfo.fity
-            outdata.(sfield('yH2O',i)) = pi*ones(expinfo.numpoints(i),1); 
+            outdata.(sfield('yH2O',i)) = linspace(pi,pi*pi,expinfo.numpoints(i))'; 
         end
         
         if expinfo.fitT
-            outdata.(sfield('T05',i)) = pi*ones(expinfo.numpoints(i),1); 
+            outdata.(sfield('T05',i)) = linspace(pi,pi*pi,expinfo.numpoints(i))'; 
         end
         
     end

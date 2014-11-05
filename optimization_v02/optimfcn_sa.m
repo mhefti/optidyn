@@ -18,11 +18,12 @@ function res = optimfcn_sa(param,y,hand,execname,expinfo,brut,initvals)
 % param is normalized
 param_abs = param.*initvals;
 
+% get the model output 
 md = hand(param_abs,execname,expinfo,brut,initvals);
 
 % maximum likelihood
-res_y_sum = ones(expinfo.numexp,1);
-res_T_sum = ones(expinfo.numexp,1);
+res_y_sum = zeros(expinfo.numexp,1);
+res_T_sum = zeros(expinfo.numexp,1);
 
 % constructs a string 'q_DATE_mode' where DATE is the date of the
 % experiment specified in expinfo.list and mode is adsorption (a) or
@@ -45,8 +46,7 @@ for i = 1:expinfo.numexp
             y.(sfield('yH2O',i))/expinfo.maxy(i) - ...
             intercust('yH2O',i)/expinfo.maxy(i) ...
             ).^2);
-    
-        res_y_sum(i) = ssq.(sfield('yH2O',i));
+         res_y_sum(i) = ssq.(sfield('yH2O',i));
     end
     
     if expinfo.fitT
@@ -74,12 +74,15 @@ fprintf('error in experiment                    %s\n',num2str(expinfo.list(i)))
     
 end
     
+% if both fity and fitT are enabled, the log-likelihood is: 
+% res = sum_{i=1}^(Nexp) log(ssq_y_i) + sum_{i=1}^(Nexp) log(ssq_T_i)
+% in this way every experiment is equally weighted
 if expinfo.fity && expinfo.fitT
-    res = sum(log(sum(res_y_sum)) + log(sum(res_T_sum)));    
+    res = sum(log(res_y_sum)) + sum(log(res_T_sum));    
 elseif expinfo.fity
-    res = sum(log(sum(res_y_sum)));
+    res = sum(log(res_y_sum));
 else
-    res = sum(log(sum(res_T_sum)));    
+    res = sum(log(res_T_sum));    
 end
 
 % write log file 
