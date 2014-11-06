@@ -1,0 +1,41 @@
+VERSIONLOG
+
+
+optimization_v00
+- 1 experiments, just adsorption mode to be fitted
+- lsq, MultiStart, GlobalSearch
+- Brutus compatible
+- parellel eval of objective function in optimizer
+
+
+optimization_v00.1
+- any number of experiments to be fitted
+- adsorption/desorption mode possible
+
+
+optimization_v01
+- added patternsearch and restructured getfit
+
+optimization_v02
+- normalized the variables to be fitted
+- normalized also experimental data (see optimfcn_sa)
+- give time for jobs as input
+- added interpolating function interp1 to account for non regular time steps in the experiments 
+  (not always 1 second as specified)
+- added fminsearchbnd as option
+- corrected the flow in get_experiments
+- changed the objective function, now every experiments is equally weighted
+	-> note: obviously leads to changes in the value of the objective function, careful when comparing
+
+
+
+optimization_v03
+- added option for equilibrium theory fitting   
+  
+  
+TO DO: 
+- equilibrium theory fitting -> put in version 3
+- fitting options for detailed model (Lisa/Dorian)
+- decide what happens with the value of the function value when there is an error or a timeout
+
+
