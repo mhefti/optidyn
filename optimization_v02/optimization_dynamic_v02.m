@@ -6,16 +6,47 @@ if exist(mout,'file')
 end
 diary(mout);
 %% input
-exp_list = [140714 140718 140730]; % choose dates of expts
-timecut_list = 3600*[7 9 5]; % choose at what time to cut the expt
-mode_list = ['a' 'a' 'a']; % choose also the mode (a: ads/d: des) 
+% exp_list = [140714 140718 140730]; % choose dates of expts
+% timecut_list = 3600*[7 9 5]; % choose at what time to cut the expt in [s]
+% mode_list = ['a' 'a' 'a']; % choose also the mode (a: ads/d: des) 
 
-% choose what to fit
+% all experiments
+exp_list = [140801 140801 140808 140808 140812 140714 140718]; % choose dates of expts
+timecut_list = 3600*[0.8 1.5 0.6 1 5 7 9]; % choose at what time to cut the expt
+mode_list = ['a' 'd' 'a' 'd' 'a' 'a' 'a']; % choose also the mode (a: ads/d: des) 
+
+
+% objective variables 
+% -------------------------------------------------------------------------
 fit_y = true; % composition of H2O: yH2O
-fit_T = true; % temperature at position 0.5*L
+fit_T = false; % temperature at position 0.5*L
 
 % dynamic isotherm fitting to static data
-fit_iso = true; 
+fit_iso = false; 
+
+
+% fitting parameters
+% -------------------------------------------------------------------------
+
+% first choose if isothermal fitting or non-isothermal
+fitisothermal = true;               % hads will be = 0 in parameter1.dat
+                                    % htc will be 1e6 in conditions.dat
+fitmtc = true;                      % mass transfer coefficient
+fithtc = false;                     % heat transfer coefficient
+fitHads = false;                    % heat of adsorption
+fitisotype = 'Sips_Sips';           % isotherm type 'Do_modified'
+numisopar = 6;                      % # of isotherm parameters
+
+% -------------------------------------------------------------------------
+% keep the order of the fitting vector, i.e. arrange as follows: 
+% [     isopar(1)               % 1
+%          .                    % .
+%          .                    % .
+%       isopar(numisopar)       % numisopar
+%       mtc                     % .
+%       htc                     % .
+%       Hads                ]   % numpar
+% -------------------------------------------------------------------------
 
 % choose to fit on brutus or not
 brutmode = 'nobrutus'; % or brutus/nobrutus
@@ -27,10 +58,10 @@ slaves = 16;
 timespan = 36;
 
 % set the timeout [s]
-timeout = 5;
+timeout = 300;
 
 % choose the algorithm to be used
-algorithm = 'fminsearchbnd'; 
+algorithm = 'GlobalSearch'; 
 parallel = 'noparallel'; % or 'noparallel'
 
 % available options: 
@@ -57,6 +88,39 @@ expinfo.modes = mode_list;
 expinfo.time = timespan;
 expinfo.fitiso = fit_iso;
 expinfo.time_out = timeout;
+expinfo.fit_mtc = fitmtc;
+expinfo.fit_htc = fithtc;
+expinfo.fit_Hads = fitHads;
+expinfo.fit_isothermal = fitisothermal;
+expinfo.num_isopar = numisopar;
+expinfo.iso_type = fitisotype;
+
+% extract # of fitting parameters: 
+numpar = numisopar;
+if expinfo.fit_mtc
+    numpar = numpar + 1;
+end
+
+if expinfo.fit_htc
+    numpar = numpar + 1;
+end
+
+if expinfo.fit_Hads
+    numpar = numpar + 1;
+end
+
+if expinfo.fit_isothermal && expinfo.fit_Hads
+    error('error: are you sure to fit Hads to isothermal conditions?')
+end
+
+if expinfo.fit_htc && expinfo.fit_htc 
+    error('error: htc is to be fitted in isothermal conditions')
+end
+
+expinfo.num_pars = numpar;
+
+fprintf('the number of fitting parameters is:           %i\n',expinfo.num_pars)
+
 condmatall = [];
 
 % sfield constructs a string 'q_DATE_mode' where DATE is the date of the
@@ -85,7 +149,9 @@ fclose(fid);
 
 expinfo.conditions = condmatall;
 % expinfo.fparamids = [16 18]; % rows of mtc and htc 
-expinfo.fparamids = [16 12]; % rows of mtc and heat of adsorption
+expinfo.htc_id = 18;
+expinfo.mtc_id = 16;
+expinfo.Hads_id = 12;
 expinfo.fity = fit_y;
 expinfo.fitT = fit_T;
 
@@ -119,25 +185,59 @@ for i = numexp
     end
     
 end
+
 x = [];
 % constraining
+if length(initvals) ~= expinfo.num_pars
+    fprintf('initial guesses:                               %i parameters\n',length(initvals))
+    fprintf('to be fitted:                                  %i parameters\n',expinfo.num_pars)
+    error('initial guess does not match the number of fitting parameters')
+end
+
 lb = 1e0*ones(size(initvals));
-lb(1) = 1e-3;
-lb(2) = 1e-3;
-lb(4) = 1e-3;
-lb(3) = 1;
-lb(5) = 2;
-lb(6) = 0.001;
-lb(7) = 10000;
+lb(1) = 0.05*initvals(1);
+lb(2) = 0.05*initvals(2);
+lb(3) = 0.05;
+lb(4) = 0.08*initvals(4);
+lb(5) = 0.05*initvals(5);
+lb(6) = 1;
+lb(7) = 0.001;
+
 
 ub = 1e4*ones(size(initvals));
-ub(1) = 5e3;
-ub(2) = 5e3;
-ub(3) = 25;
-ub(4) = 500;
-ub(5) = 20;
-ub(6) = 0.1;
-ub(7) = 45000;
+ub(1) = 2*initvals(1);
+ub(2) = 2*initvals(2);
+ub(3) = 2;
+ub(4) = 25;
+ub(5) = 5*initvals(5);
+ub(6) = 10;
+ub(7) = 0.1;
+
+
+% make sure initvals are within the bounds
+lowind = (initvals<lb);
+upind = (initvals>ub);
+
+for i = 1:length(initvals)
+    
+    if lowind(i) ~= 0
+        fprintf('paramter %i is less than it''s lower bound\n',i)
+    end
+    
+end
+
+for i = 1:length(initvals)
+
+    if upind(i) ~= 0
+        fprintf('paramter %i is larger than it''s upper bound\n',i)
+    end
+    
+end
+
+if norm(abs(lowind)) ~= 0 || norm(abs(upind)) ~= 0
+    error('there are initial values that are outside of the bounds')
+end
+
 
 % extract exectuable name from fortran_code
 if brutus
@@ -191,7 +291,7 @@ toc;
 headerfunc = @(ii) sprintf('%s resnorm\t outputflag',param_number_func(ii));
 numcols = numpars + 2;
 fid = fopen('output.txt','w');
-outrowvec = [optimoutput.params'.*initvals...
+outrowvec = [optimoutput.params'.*initvals'...
     optimoutput.resnorm optimoutput.flag];
 fprintf(fid,'%s\n',headerfunc(1:numpars));
 fprintf(fid,repmat('%f\t',1,numcols),outrowvec);

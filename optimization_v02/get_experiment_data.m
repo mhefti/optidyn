@@ -50,7 +50,7 @@ therange = 1:tmax;
 % relevant file names
 data_LV_Tcol = read_file(file_LV('Tcol'),1,'Tcol');
 data_LV_means = read_file(file_LV('means'),1,'means');
-data_dP = read_file(file_dP('dP'),1,'dP'); %%%% CONTINUE HERE
+data_dP = read_file(file_dP('dP'),1,'dP');
 % conditions --------------------------------------------------------------
 i = 1;
 % time 
@@ -101,7 +101,7 @@ dlmwrite(strcat(simpath,'prms/parameter2.dat'),Heid,'delimiter','','-append')
 
 % add the conditions to the outstruc
 if adsmode 
-    outstruc.yH2O(set_zero) = y0H2O*ones(set_zero,1);
+    outstruc.yH2O(set_zero) = y0H2O*ones(max(set_zero),1);
 else
     outstruc.yH2O(set_max) = outstruc.yH2O(Imax)*ones(set_max,1);
 end

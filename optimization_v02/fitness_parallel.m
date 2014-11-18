@@ -10,6 +10,10 @@ else
     task_curr = 1;
 end
 
+% name functions
+sfield = @(q,ii) sprintf('%s_%s_%s',q,num2str(expinfo.list(ii)),expinfo.modes(ii));
+
+% if ~expinfo.fiteq % detailed model is fitted
 fprintf('----------------------------------------------------\n')
 fprintf('current worker ID:  %d\n',task_curr)
 wd_curr = sprintf('worker_%2.2d',task_curr);
@@ -18,6 +22,8 @@ fprintf('current parameters evaluated: %f\n',params)
 cd(wd_curr) 
 % remove the dump file
 succ_dump = 'dump_succ.log';
+%end
+
 
 if exist(succ_dump,'file')
     delete(succ_dump);
@@ -28,10 +34,10 @@ end
 % read/rewrite the files % replace just w vector and add to expinfo!
 fid = fopen('isotherm.dat','r+');
 fcontent = textscan(fid,'%f','delimiter','\t','HeaderLines',1);
-fcontent{1}(1:5) = params(1:5);
+fcontent{1}(1:expinfo.num_isopar) = params(1:expinfo.num_isopar);
 fcontent = [fcontent{1}(:)];
 frewind(fid)
-fprintf(fid,'%s\n','''Do_modified''');
+fprintf(fid,'%s\n',strcat('''',expinfo.iso_type,'''')); % jap, 4 apostrophes needed
 fprintf(fid,'%f\n',fcontent);
 fprintf(fid,'%s\n','''Inert''');
 fclose(fid);
@@ -41,18 +47,55 @@ if expinfo.fitiso
     outdata.iso_pars = isotherm_fit(params(1));
 end
 
+% heat of adsorption
+ind_loc = expinfo.num_pars;
+Hads = [];
+if expinfo.fit_isothermal == true && expinfo.fit_Hads == true
+    Hads = 0;
+    warning('Hads was set to zero because isothermal fitting enabled')
+elseif expinfo.fit_Hads
+    Hads = params(ind_loc); % always the last entry if enabled
+    ind_loc = expinfo.num_pars - 1; % move one up in the fitting vector
+end
+
+if ~isempty(Hads)
+    fid = fopen('parameter1.dat','r+');
+    fcontent = textscan(fid,'%s%s %*[^\n]');
+    fclose(fid);
+    fcontent{1}(expinfo.Hads_id) = num2cell(-Hads*1e3);
+    dlmcell('parameter1.dat',[fcontent{1} fcontent{2}]);
+end
+
+% heat transfer coefficient, mass transfer coefficient
+htc = [];
+if expinfo.fit_isothermal == true && expinfo.fit_htc == true
+    htc = 1e6;
+    warning('htc was set to 1e6 because isothermal fitting enabled')
+elseif expinfo.fit_htc == true 
+    htc = params(ind_loc);
+    ind_loc = ind_loc - 1; % move one up in the fitting vector
+end
+
+mtc = [];
+if expinfo.fit_mtc
+    mtc = params(ind_loc);
+    ind_loc = ind_loc - 1;
+end
+    
 % update conditions for fitting
 newconditions = expinfo.conditions;
-newconditions(expinfo.fparamids(1),:) = params(6); % mtc
-% newconditions(expinfo.fparamids(2),:) = params(7); % mtc
-dlmwrite('conditions.dat',newconditions,'\t')
 
-% for heat of adsorption
-fid = fopen('parameter1.dat','r+');
-fcontent = textscan(fid,'%s%s %*[^\n]');
-fclose(fid);
-fcontent{1}(expinfo.fparamids(2)) = num2cell(-params(7));
-dlmcell('parameter1.dat',[fcontent{1} fcontent{2}]);
+if ~isempty(htc)
+    newconditions(expinfo.htc_id,:) = htc; % htc
+end
+
+if ~isempty(mtc)
+    newconditions(expinfo.mtc_id,:) = mtc; % htc
+end
+
+if isempty(htc) == false || isempty(mtc) == false % conditions rewritten
+    dlmwrite('conditions.dat',newconditions,'\t')
+end
 
 %% computation of the model
 
@@ -113,7 +156,6 @@ sfield = @(q,ii) sprintf('%s_%s_%s',q,num2str(expinfo.list(ii)),expinfo.modes(ii
 if timeup || noerr_flag ~= true
     
     for i = 1:expinfo.numexp
-        
         outdata.(sfield('time',i)) = linspace(1,expinfo.numpoints(i),expinfo.numpoints(i));
         
         if expinfo.fity

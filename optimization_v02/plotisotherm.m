@@ -1,4 +1,4 @@
-function plotisotherm(params,leginfo)
+function plotisotherm(params,leginfo,type)
 % tiny function to return a figure with the same # of isotherms as # of 
 % parent fields contained in the input structure params
 
@@ -8,6 +8,10 @@ end
 
 if nargin < 2
     leginfo =[];
+end
+
+if nargin < 3
+    type = 'sips_sips';
 end
 
 datasource = 'D:\Users\mhefti\Documents\Isotherm Models\Activated Carbons\AP3-60_new_sensor_balance\';
@@ -27,7 +31,7 @@ figure(1)
 clf
 box on; grid on; hold on
 set(gca,'LineWidth',1.1,'TickLength',[0.008 0.008],'FontSize',14)
-xlabel('relative humidity [%]')
+xlabel('relative humidity [-]')
 ylabel('adsorbed amount [mol/kg]')
 xlim([0 1])
 ylim([0 25])
@@ -51,10 +55,21 @@ colmat = [254,217,118; 254,178,76;253,141,60; 240,59,32; 189,0,38];
 colmat = colmat(:,end:-1:1);
 colmat = colmat/255;
 
-for i=1:numseries
-	plot(RHvec,model_DoLang(params(i).series,RHvec),'Color',colmat(i,:),'LineWidth',2)
+if strcmp(type,'sips_sips')
+    
+    for i=1:numseries
+        plot(RHvec,model_SipsSips(params(i).series,RHvec),'Color',colmat(i,:),'LineWidth',2)
+    end
+    
 end
 
+if strcmp(type,'Do')
+    
+    for i=1:numseries
+        plot(RHvec,model_DoLang(params(i).series,RHvec),'Color',colmat(i,:),'LineWidth',2)
+    end
+    
+end
 
 
 if isempty(leginfo) ~= true
@@ -66,12 +81,12 @@ if isempty(leginfo) ~= true
     
 end
 
-lcell = [{'exp #: 140828';'static rest';'fit to 140828'}; leginfo];
+lcell = [{'exp #: 140828';'static rest';'static fit to 140828'}; leginfo];
 legh = legend(lcell,'Location','North');
 set(legh,'FontSize',10)
 set(legh,'Box','off')
-print('-depsc','isotherms.eps')
-
+% print('-depsc','isotherms.eps')
+export_fig 'isotherms.eps' 'isotherms.png'
 
 function xi = model_DoLang(parw,x)
 
@@ -81,5 +96,12 @@ xi = S0*k*x./(1 + k*x)...
     + Smu*Kmu*x.^m./(1 + Kmu*x.^m);
 end
 
+function xi = model_SipsSips(parw,x)
+
+S0 = parw(1); k = parw(2); m0 = parw(3);
+Smu = parw(4); Kmu = parw(5); m = parw(6);
+xi = S0*k*x.^m0./(1 + k*x.^m0)...
+    + Smu*Kmu*x.^m./(1 + Kmu*x.^m);
+end
 
 end

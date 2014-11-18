@@ -27,7 +27,7 @@ if parall
         
     if brutus
         poolobj = parcluster('BrutusLSF8h');
-        sarg = sprintf('''-W %s:00 -R "rusage[mem=1000]"''',num2str(expinfo.time));
+        sarg = sprintf('-W %s:00 -R "rusage[mem=1000]"',num2str(expinfo.time));
         poolobj.SubmitArguments = sarg;
         jobid = getenv('LSB_JOBID');
         mkdir(jobid);
