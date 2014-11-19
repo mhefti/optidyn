@@ -58,7 +58,10 @@ colmat = colmat/255;
 if strcmp(type,'sips_sips')
     
     for i=1:numseries
-        plot(RHvec,model_SipsSips(params(i).series,RHvec),'Color',colmat(i,:),'LineWidth',2)
+        [out, term1, term2] = model_SipsSips(params(i).series,RHvec);
+        plot(RHvec,out,'Color',colmat(i,:),'LineWidth',2)
+        plot(RHvec,term1,'Color','r')
+        plot(RHvec,term2,'Color','b')
     end
     
 end
@@ -96,12 +99,18 @@ xi = S0*k*x./(1 + k*x)...
     + Smu*Kmu*x.^m./(1 + Kmu*x.^m);
 end
 
-function xi = model_SipsSips(parw,x)
+function [xi,term1,term2] = model_SipsSips(parw,x)
 
 S0 = parw(1); k = parw(2); m0 = parw(3);
 Smu = parw(4); Kmu = parw(5); m = parw(6);
-xi = S0*k*x.^m0./(1 + k*x.^m0)...
-    + Smu*Kmu*x.^m./(1 + Kmu*x.^m);
+
+term1 = S0*k*x.^m0./(1 + k*x.^m0);
+term2 = Smu*Kmu*x.^m./(1 + Kmu*x.^m);
+
+xi = term1 + term2;
+
 end
+
+
 
 end

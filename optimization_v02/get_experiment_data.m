@@ -8,7 +8,7 @@ if nargin == 2
 end
 %% set up paths & names
 if strcmp(brutmode,'brutus')
-    destpath = strcat('experiments_by_date',filesep);
+    destpath = strcat('..',filesep,'experiments_by_date',filesep);
 else
     destpath = '\\d.ethz.ch\dfs\groups\mavt\spl\Temp\adsorption\SmallColumn\eval\experiments\experiments_by_date\';
 end

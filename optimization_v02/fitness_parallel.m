@@ -32,9 +32,21 @@ end
 %% parameter handling
 
 % read/rewrite the files % replace just w vector and add to expinfo!
+
 fid = fopen('isotherm.dat','r+');
 fcontent = textscan(fid,'%f','delimiter','\t','HeaderLines',1);
-fcontent{1}(1:expinfo.num_isopar) = params(1:expinfo.num_isopar);
+
+% parse the isotherm parameters to be fitted
+if expinfo.isoflex
+   
+    for i=1:numel(expinfo.fitisolocs)
+        fcontent{1}(expinfo.fitisolocs(i)) = params(i);    
+    end
+
+else
+    fcontent{1}(1:expinfo.num_isopar) = params(1:expinfo.num_isopar);
+end
+
 fcontent = [fcontent{1}(:)];
 frewind(fid)
 fprintf(fid,'%s\n',strcat('''',expinfo.iso_type,'''')); % jap, 4 apostrophes needed

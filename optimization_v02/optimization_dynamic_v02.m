@@ -37,6 +37,11 @@ fitHads = false;                    % heat of adsorption
 fitisotype = 'Sips_Sips';           % isotherm type 'Do_modified'
 numisopar = 6;                      % # of isotherm parameters
 
+isoflex = true;                     % flag for individual iso-par fitting
+fitisolocs = [4:6];                 % provide which parameters of the 
+                                    % isotherm should be fitted;
+                                    % default: all, i.e. 1:numisopar
+
 % -------------------------------------------------------------------------
 % keep the order of the fitting vector, i.e. arrange as follows: 
 % [     isopar(1)               % 1
@@ -94,9 +99,16 @@ expinfo.fit_Hads = fitHads;
 expinfo.fit_isothermal = fitisothermal;
 expinfo.num_isopar = numisopar;
 expinfo.iso_type = fitisotype;
+expinfo.isoflex = isoflex;
+expinfo.fitisolocs = fitisolocs;
 
 % extract # of fitting parameters: 
-numpar = numisopar;
+if ~expinfo.isoflex
+    numpar = numisopar;
+else
+    numpar = numel(expinfo.fitisolocs);
+end
+
 if expinfo.fit_mtc
     numpar = numpar + 1;
 end
