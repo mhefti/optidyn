@@ -18,8 +18,10 @@ fprintf('----------------------------------------------------\n')
 fprintf('current worker ID:  %d\n',task_curr)
 wd_curr = sprintf('worker_%2.2d',task_curr);
 fprintf('current parameters evaluated: %f\n',params)
+
 % change directory
 cd(wd_curr) 
+
 % remove the dump file
 succ_dump = 'dump_succ.log';
 %end
@@ -31,20 +33,42 @@ end
 
 %% parameter handling
 
-% read/rewrite the files % replace just w vector and add to expinfo!
-
+% isotherm parameters
+% -------------------------------------------------------------------------
 fid = fopen('isotherm.dat','r+');
 fcontent = textscan(fid,'%f','delimiter','\t','HeaderLines',1);
 
 % parse the isotherm parameters to be fitted
-if expinfo.isoflex
-   
-    for i=1:numel(expinfo.fitisolocs)
-        fcontent{1}(expinfo.fitisolocs(i)) = params(i);    
+if expinfo.fitiso % dynamic isotherm parameter fitting to static data
+    
+    if expinfo.isoflex
+        % get the parameters that are fixed from isotherm.dat, i.e. all others
+        % than specified in expinfo.fitisolocs
+        fix_idx = setdiff(1:expinfo.num_isopar,expinfo.fitisolocs);
+        fixisopars = fcontent{1}(fix_idx);
+        outdata.iso_pars = isotherm_fit(params(1),expinfo,[fixisopars],fix_idx);
+        
+        for i=1:numel(expinfo.fitisolocs)
+            fcontent{1}(expinfo.fitisolocs(i)) = outdata.iso_pars(i);
+        end
+        
+    else
+        outdata.iso_pars = isotherm_fit(params(1),expinfo,[],[]);
+        fcontent{1}(1:numel(outdata.iso_pars)) = outdata.iso_pars;
     end
+    
+else % isotherm fitting to dynamic experiments directly
 
-else
-    fcontent{1}(1:expinfo.num_isopar) = params(1:expinfo.num_isopar);
+    if expinfo.isoflex
+   
+        for i=1:numel(expinfo.fitisolocs)
+            fcontent{1}(expinfo.fitisolocs(i)) = params(i);    
+        end
+
+    else
+        fcontent{1}(1:expinfo.num_isopar) = params(1:expinfo.num_isopar);
+    end 
+    
 end
 
 fcontent = [fcontent{1}(:)];
@@ -54,13 +78,44 @@ fprintf(fid,'%f\n',fcontent);
 fprintf(fid,'%s\n','''Inert''');
 fclose(fid);
 
-% parameter fitting
-if expinfo.fitiso 
-    outdata.iso_pars = isotherm_fit(params(1));
+% mass transfer
+% -------------------------------------------------------------------------
+mtc = [];
+if expinfo.fit_mtc
+    mtc = params(ind_loc);
+    ind_loc = ind_loc - 1;
 end
 
-% heat of adsorption
-ind_loc = expinfo.num_pars;
+fid = fopen('settings.dat','r+');
+fcontent = textscan(fid,[repmat('%s',1,8) '%*[^\n]']);
+fclose(fid);
+fcontent{1}(expinfo.mtcmodelid) = {strcat('''',expinfo.mtcmodel,'''')};
+dlmcell('settings.dat',[fcontent{1} fcontent{2:end}]);
+
+
+ind_loc = expinfo.num_pars; % start at the end of the par vector
+
+% mass transfer model - write in fitting.dat
+if expinfo.fitmtcmodel
+    % write the mtcmodel parameters in fitting.dat 
+    mtcstr = @(ii) sprintf('''mtcscale_%i''',ii);
+    mtccell = cell(2*expinfo.nummtcpar,1);
+    j = 1;
+    
+    for i = 1:expinfo.nummtcpar;
+        mtccell{j} = mtcstr(i);
+        mtccell{j + 1} = params(ind_loc);
+        j = j + 2;
+        ind_loc = ind_loc - 1;
+    end
+    
+    % write the parameters in fitting.dat
+    mtccell = [num2str(expinfo.nummtcpar); mtccell];
+    dlmcell('fitting.dat',mtccell);  
+end
+      
+% heat of adsorption 
+% -------------------------------------------------------------------------
 Hads = [];
 if expinfo.fit_isothermal == true && expinfo.fit_Hads == true
     Hads = 0;
@@ -79,6 +134,7 @@ if ~isempty(Hads)
 end
 
 % heat transfer coefficient, mass transfer coefficient
+% -------------------------------------------------------------------------
 htc = [];
 if expinfo.fit_isothermal == true && expinfo.fit_htc == true
     htc = 1e6;
@@ -88,21 +144,15 @@ elseif expinfo.fit_htc == true
     ind_loc = ind_loc - 1; % move one up in the fitting vector
 end
 
-mtc = [];
-if expinfo.fit_mtc
-    mtc = params(ind_loc);
-    ind_loc = ind_loc - 1;
-end
-    
 % update conditions for fitting
 newconditions = expinfo.conditions;
 
 if ~isempty(htc)
-    newconditions(expinfo.htc_id,:) = htc; % htc
+    newconditions(expinfo.htc_id,:) = htc;
 end
 
 if ~isempty(mtc)
-    newconditions(expinfo.mtc_id,:) = mtc; % htc
+    newconditions(expinfo.mtc_id,:) = mtc;
 end
 
 if isempty(htc) == false || isempty(mtc) == false % conditions rewritten
@@ -110,7 +160,6 @@ if isempty(htc) == false || isempty(mtc) == false % conditions rewritten
 end
 
 %% computation of the model
-
 % timeout function
 timeout = expinfo.time_out; % s
 tstart = tic;

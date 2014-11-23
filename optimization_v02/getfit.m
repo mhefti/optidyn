@@ -166,7 +166,7 @@ switch alg
         if parall
             ms = MultiStart('UseParallel','always');
             [output.params,output.resnorm,output.flag,...
-                output.out,allmins] = run(ms,problem,5e4);
+                output.out,allmins] = run(ms,problem,expinfo.numMSpoints);
             matlabpool close
         else
             ms = MultiStart('UseParallel','never');

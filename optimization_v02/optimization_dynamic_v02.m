@@ -6,14 +6,14 @@ if exist(mout,'file')
 end
 diary(mout);
 %% input
-% exp_list = [140714 140718 140730]; % choose dates of expts
-% timecut_list = 3600*[7 9 5]; % choose at what time to cut the expt in [s]
-% mode_list = ['a' 'a' 'a']; % choose also the mode (a: ads/d: des) 
+exp_list = [140714 140718]; % choose dates of expts
+timecut_list = 3600*[7 9 ]; % choose at what time to cut the expt in [s]
+mode_list = ['a' 'a']; % choose also the mode (a: ads/d: des) 
 
 % all experiments
-exp_list = [140801 140801 140808 140808 140812 140714 140718]; % choose dates of expts
-timecut_list = 3600*[0.8 1.5 0.6 1 5 7 9]; % choose at what time to cut the expt
-mode_list = ['a' 'd' 'a' 'd' 'a' 'a' 'a']; % choose also the mode (a: ads/d: des) 
+% exp_list = [140801 140801 140808 140808 140812 140714 140718]; % choose dates of expts
+% timecut_list = 3600*[0.8 1.5 0.6 1 5 7 9]; % choose at what time to cut the expt
+% mode_list = ['a' 'd' 'a' 'd' 'a' 'a' 'a']; % choose also the mode (a: ads/d: des) 
 
 
 % objective variables 
@@ -21,8 +21,6 @@ mode_list = ['a' 'd' 'a' 'd' 'a' 'a' 'a']; % choose also the mode (a: ads/d: des
 fit_y = true; % composition of H2O: yH2O
 fit_T = false; % temperature at position 0.5*L
 
-% dynamic isotherm fitting to static data
-fit_iso = false; 
 
 
 % fitting parameters
@@ -31,17 +29,42 @@ fit_iso = false;
 % first choose if isothermal fitting or non-isothermal
 fitisothermal = true;               % hads will be = 0 in parameter1.dat
                                     % htc will be 1e6 in conditions.dat
-fitmtc = true;                      % mass transfer coefficient
 fithtc = false;                     % heat transfer coefficient
 fitHads = false;                    % heat of adsorption
-fitisotype = 'Sips_Sips';           % isotherm type 'Do_modified'
+fitisotype = 'Sips_Sips';           % isotherm, 'Sips_Sips or 'Do_modified'
+
+% isotherm parameter fitting
+fit_iso = true;                     % if true, dynamic isotherm fitting to
+                                    % static data then the scaling factor
+                                    % must be at the first position of the
+                                    % initial guess - UPDATE!!!
+
 numisopar = 6;                      % # of isotherm parameters
+                                    % ** NOTE: must also be set to the
+                                    % right value when  fit_iso is enabled
 
-isoflex = true;                     % flag for individual iso-par fitting
+isoflex = false;                    % flag for individual iso-par fitting
 fitisolocs = [4:6];                 % provide which parameters of the 
-                                    % isotherm should be fitted;
+                                    % isotherm should be fitted; don't have
+                                    % to be subsequent: [1,3,5] possible
                                     % default: all, i.e. 1:numisopar
-
+                                    % *** NOTE: can be combined with the
+                                    % feature fit_iso 
+                                    % *** CAUTION: if isoflex == true make
+                                    % sure to have the right isotherm 
+                                    % parameter values in prms/isotherm.dat 
+                                    
+% mass transfer model
+mtcmodel = 'constant';              % options are: 'constant', 'tangens' or
+                                    %              'monotonic'
+fitmtc = false;                     % mass transfer coefficient
+fitmtcmodel = false;                % fit a mtc model, note that this
+                                    % doesn't fit the mtc itself, but a 
+                                    % parameters of the scaling function
+                                    % specified in mtcmodel
+nummtcpar = 1;                      % number of mtcmodel parameters (mtc 
+                                    % itself excluded
+                                    
 % -------------------------------------------------------------------------
 % keep the order of the fitting vector, i.e. arrange as follows: 
 % [     isopar(1)               % 1
@@ -68,6 +91,9 @@ timeout = 300;
 % choose the algorithm to be used
 algorithm = 'GlobalSearch'; 
 parallel = 'noparallel'; % or 'noparallel'
+
+% optional for MultiStart, set number of initial points (default: 2e4)
+numMSpoints = 2e4;
 
 % available options: 
 % -------------------------------------------------------------------------
@@ -101,12 +127,21 @@ expinfo.num_isopar = numisopar;
 expinfo.iso_type = fitisotype;
 expinfo.isoflex = isoflex;
 expinfo.fitisolocs = fitisolocs;
+expinfo.numMSpoints = numMSpoints; 
+expinfo.fitmtcmodel = fitmtcmodel;
+expinfo.mtcmodel = mtcmodel;
+expinfo.mtcmodelid = 16;
+expinfo.nummtcpar = nummtcpar;
 
 % extract # of fitting parameters: 
 if ~expinfo.isoflex
     numpar = numisopar;
 else
     numpar = numel(expinfo.fitisolocs);
+end
+
+if expinfo.fitiso
+    numpar = numpar - numisopar + 1; % just the scaling factor
 end
 
 if expinfo.fit_mtc
@@ -127,6 +162,10 @@ end
 
 if expinfo.fit_htc && expinfo.fit_htc 
     error('error: htc is to be fitted in isothermal conditions')
+end
+
+if expinfo.fitmtcmodel 
+    numpar = numpar + nummtcpar;
 end
 
 expinfo.num_pars = numpar;
@@ -206,24 +245,37 @@ if length(initvals) ~= expinfo.num_pars
     error('initial guess does not match the number of fitting parameters')
 end
 
+% lb = 1e0*ones(size(initvals));
+% lb(1) = 0.05*initvals(1);
+% lb(2) = 0.05*initvals(2);
+% lb(3) = 0.05;
+% lb(4) = 0.08*initvals(4);
+% lb(5) = 0.05*initvals(5);
+% lb(6) = 1;
+% lb(7) = 0.001;
+% 
+% 
+% ub = 1e4*ones(size(initvals));
+% ub(1) = 2*initvals(1);
+% ub(2) = 2*initvals(2);
+% ub(3) = 2;
+% ub(4) = 25;
+% ub(5) = 5*initvals(5);
+% ub(6) = 10;
+% ub(7) = 0.1;
+
 lb = 1e0*ones(size(initvals));
-lb(1) = 0.05*initvals(1);
-lb(2) = 0.05*initvals(2);
-lb(3) = 0.05;
-lb(4) = 0.08*initvals(4);
-lb(5) = 0.05*initvals(5);
-lb(6) = 1;
-lb(7) = 0.001;
+lb(1) = 0.8*initvals(1);
+% lb(2) = 0.05*initvals(2);
+% lb(3) = 1;
+% lb(4) = 0.001;
 
 
 ub = 1e4*ones(size(initvals));
-ub(1) = 2*initvals(1);
-ub(2) = 2*initvals(2);
-ub(3) = 2;
-ub(4) = 25;
-ub(5) = 5*initvals(5);
-ub(6) = 10;
-ub(7) = 0.1;
+ub(1) = 1.2*initvals(1);
+% ub(2) = 10*initvals(2);
+% ub(3) = 10;
+% ub(4) = 0.1;
 
 
 % make sure initvals are within the bounds
@@ -290,7 +342,7 @@ else % options for patternsearch
 	options.MaxFunEvals = 4000*length(initvals);
     options.Display = 'final';
     options.MeshAccelerator = 'on';
-    optsions.PlotFcns = @psplotbestf;
+    options.PlotFcns = @psplotbestf;
 end
 
 tic;
