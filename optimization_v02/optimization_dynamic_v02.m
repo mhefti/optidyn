@@ -7,7 +7,7 @@ end
 diary(mout);
 %% input
 exp_list = [140714 140718]; % choose dates of expts
-timecut_list = 3600*[7 9 ]; % choose at what time to cut the expt in [s]
+timecut_list = 3600*[1 2 ]; % choose at what time to cut the expt in [s]
 mode_list = ['a' 'a']; % choose also the mode (a: ads/d: des) 
 
 % all experiments
@@ -21,29 +21,28 @@ mode_list = ['a' 'a']; % choose also the mode (a: ads/d: des)
 fit_y = true; % composition of H2O: yH2O
 fit_T = false; % temperature at position 0.5*L
 
-
-
 % fitting parameters
 % -------------------------------------------------------------------------
 
 % first choose if isothermal fitting or non-isothermal
-fitisothermal = true;               % hads will be = 0 in parameter1.dat
+fitisothermal = false;              % hads will be = 0 in parameter1.dat
                                     % htc will be 1e6 in conditions.dat
 fithtc = false;                     % heat transfer coefficient
-fitHads = false;                    % heat of adsorption
+fitHads = true;                     % heat of adsorption; note that Hads 
+                                    % should be entered in (- kJ/mol)
 fitisotype = 'Sips_Sips';           % isotherm, 'Sips_Sips or 'Do_modified'
 
 % isotherm parameter fitting
-fit_iso = true;                     % if true, dynamic isotherm fitting to
+fit_iso = false;                     % if true, dynamic isotherm fitting to
                                     % static data then the scaling factor
                                     % must be at the first position of the
                                     % initial guess - UPDATE!!!
 
 numisopar = 6;                      % # of isotherm parameters
                                     % ** NOTE: must also be set to the
-                                    % right value when  fit_iso is enabled
+                                    % right value when fit_iso is enabled
 
-isoflex = false;                    % flag for individual iso-par fitting
+isoflex = true;                     % flag for individual iso-par fitting
 fitisolocs = [4:6];                 % provide which parameters of the 
                                     % isotherm should be fitted; don't have
                                     % to be subsequent: [1,3,5] possible
@@ -55,25 +54,28 @@ fitisolocs = [4:6];                 % provide which parameters of the
                                     % parameter values in prms/isotherm.dat 
                                     
 % mass transfer model
-mtcmodel = 'constant';              % options are: 'constant', 'tangens' or
+mtcmodel = 'monotonic';             % options are: 'constant', 'tangens' or
                                     %              'monotonic'
 fitmtc = false;                     % mass transfer coefficient
-fitmtcmodel = false;                % fit a mtc model, note that this
-                                    % doesn't fit the mtc itself, but a 
+fitmtcmodel = true;                 % fit a mtc model, note that this
+                                    % doesn't fit the mtc itself, but  
                                     % parameters of the scaling function
                                     % specified in mtcmodel
-nummtcpar = 1;                      % number of mtcmodel parameters (mtc 
+nummtcpar = 2;                      % number of mtcmodel parameters (mtc 
                                     % itself excluded
                                     
 % -------------------------------------------------------------------------
 % keep the order of the fitting vector, i.e. arrange as follows: 
-% [     isopar(1)               % 1
-%          .                    % .
-%          .                    % .
-%       isopar(numisopar)       % numisopar
-%       mtc                     % .
-%       htc                     % .
-%       Hads                ]   % numpar
+% [     isopar(1)                   % 1
+%          .                        % .
+%          .                        % .
+%       isopar(numisopar)           % numisopar
+%       mtc                         % numisopar + 1
+%       mtcmodelpar_1               % numisopar + 2
+%       .                           % .
+%       mtcmodelpar_2               % numisopar + nummtcpar
+%       htc                         % numisopar + nummtcpar + 1
+%       Hads                ]       % numpar
 % -------------------------------------------------------------------------
 
 % choose to fit on brutus or not
@@ -134,14 +136,14 @@ expinfo.mtcmodelid = 16;
 expinfo.nummtcpar = nummtcpar;
 
 % extract # of fitting parameters: 
-if ~expinfo.isoflex
-    numpar = numisopar;
-else
-    numpar = numel(expinfo.fitisolocs);
-end
+numpar = numisopar;
 
 if expinfo.fitiso
-    numpar = numpar - numisopar + 1; % just the scaling factor
+    numpar = numpar - numisopar + 1;
+end
+
+if ~expinfo.fitiso && expinfo.isoflex
+    numpar = numel(expinfo.fitisolocs);
 end
 
 if expinfo.fit_mtc
@@ -190,8 +192,10 @@ for i = numexp
     condmatall = [condmatall data.(sfield('exp',i)).condmat];
 end
 close all;
+
 % write conditions
 dlmwrite('prms/conditions.dat',condmatall,'\t')
+
 % write iterations - 
 fid = fopen('prms/iterations.dat','w+');
 tail = '// first/last experiment to evaluate';
@@ -208,8 +212,12 @@ expinfo.fitT = fit_T;
 
 %% set up fitting
 fid = fopen('parameters/initial_guess.txt','r');
-initvals = textscan(fid,'%f','delimiter','','HeaderLines',0);
-initvals = initvals{1}(:);
+ins = textscan(fid,'%f%f%f','delimiter','\t','HeaderLines',1);
+
+lb = ins{1}(:);
+initvals = ins{2}(:);
+ub = ins{3}(:);
+
 fclose(fid);
 
 % experimental data
@@ -244,39 +252,6 @@ if length(initvals) ~= expinfo.num_pars
     fprintf('to be fitted:                                  %i parameters\n',expinfo.num_pars)
     error('initial guess does not match the number of fitting parameters')
 end
-
-% lb = 1e0*ones(size(initvals));
-% lb(1) = 0.05*initvals(1);
-% lb(2) = 0.05*initvals(2);
-% lb(3) = 0.05;
-% lb(4) = 0.08*initvals(4);
-% lb(5) = 0.05*initvals(5);
-% lb(6) = 1;
-% lb(7) = 0.001;
-% 
-% 
-% ub = 1e4*ones(size(initvals));
-% ub(1) = 2*initvals(1);
-% ub(2) = 2*initvals(2);
-% ub(3) = 2;
-% ub(4) = 25;
-% ub(5) = 5*initvals(5);
-% ub(6) = 10;
-% ub(7) = 0.1;
-
-lb = 1e0*ones(size(initvals));
-lb(1) = 0.8*initvals(1);
-% lb(2) = 0.05*initvals(2);
-% lb(3) = 1;
-% lb(4) = 0.001;
-
-
-ub = 1e4*ones(size(initvals));
-ub(1) = 1.2*initvals(1);
-% ub(2) = 10*initvals(2);
-% ub(3) = 10;
-% ub(4) = 0.1;
-
 
 % make sure initvals are within the bounds
 lowind = (initvals<lb);

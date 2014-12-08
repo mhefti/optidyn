@@ -10,9 +10,6 @@ else
     task_curr = 1;
 end
 
-% name functions
-sfield = @(q,ii) sprintf('%s_%s_%s',q,num2str(expinfo.list(ii)),expinfo.modes(ii));
-
 % if ~expinfo.fiteq % detailed model is fitted
 fprintf('----------------------------------------------------\n')
 fprintf('current worker ID:  %d\n',task_curr)
@@ -24,14 +21,26 @@ cd(wd_curr)
 
 % remove the dump file
 succ_dump = 'dump_succ.log';
-%end
-
 
 if exist(succ_dump,'file')
     delete(succ_dump);
 end
 
 %% parameter handling
+% *** NOTE: keep order of the variables, as specified in the file 
+% optimization_dynamic_v0X
+% -------------------------------------------------------------------------
+% [     isopar(1)                   % 1
+%          .                        % .
+%          .                        % .
+%       isopar(numisopar)           % numisopar
+%       mtc                         % numisopar + 1
+%       mtcmodelpar_1               % numisopar + 2
+%       .                           % .
+%       mtcmodelpar_2               % numisopar + nummtcpar
+%       htc                         % numisopar + nummtcpar + 1
+%       Hads                ]       % numpar
+% -------------------------------------------------------------------------
 
 % isotherm parameters
 % -------------------------------------------------------------------------
@@ -71,6 +80,7 @@ else % isotherm fitting to dynamic experiments directly
     
 end
 
+% write the contents of isotherm.dat
 fcontent = [fcontent{1}(:)];
 frewind(fid)
 fprintf(fid,'%s\n',strcat('''',expinfo.iso_type,'''')); % jap, 4 apostrophes needed
@@ -78,42 +88,11 @@ fprintf(fid,'%f\n',fcontent);
 fprintf(fid,'%s\n','''Inert''');
 fclose(fid);
 
-% mass transfer
-% -------------------------------------------------------------------------
-mtc = [];
-if expinfo.fit_mtc
-    mtc = params(ind_loc);
-    ind_loc = ind_loc - 1;
-end
-
-fid = fopen('settings.dat','r+');
-fcontent = textscan(fid,[repmat('%s',1,8) '%*[^\n]']);
-fclose(fid);
-fcontent{1}(expinfo.mtcmodelid) = {strcat('''',expinfo.mtcmodel,'''')};
-dlmcell('settings.dat',[fcontent{1} fcontent{2:end}]);
-
-
+% all other parameters to be fitted; 
 ind_loc = expinfo.num_pars; % start at the end of the par vector
 
-% mass transfer model - write in fitting.dat
-if expinfo.fitmtcmodel
-    % write the mtcmodel parameters in fitting.dat 
-    mtcstr = @(ii) sprintf('''mtcscale_%i''',ii);
-    mtccell = cell(2*expinfo.nummtcpar,1);
-    j = 1;
-    
-    for i = 1:expinfo.nummtcpar;
-        mtccell{j} = mtcstr(i);
-        mtccell{j + 1} = params(ind_loc);
-        j = j + 2;
-        ind_loc = ind_loc - 1;
-    end
-    
-    % write the parameters in fitting.dat
-    mtccell = [num2str(expinfo.nummtcpar); mtccell];
-    dlmcell('fitting.dat',mtccell);  
-end
-      
+% **NOTE: keep the order of the parameters
+
 % heat of adsorption 
 % -------------------------------------------------------------------------
 Hads = [];
@@ -122,7 +101,7 @@ if expinfo.fit_isothermal == true && expinfo.fit_Hads == true
     warning('Hads was set to zero because isothermal fitting enabled')
 elseif expinfo.fit_Hads
     Hads = params(ind_loc); % always the last entry if enabled
-    ind_loc = expinfo.num_pars - 1; % move one up in the fitting vector
+    ind_loc = ind_loc - 1; % move one up in the fitting vector
 end
 
 if ~isempty(Hads)
@@ -144,6 +123,40 @@ elseif expinfo.fit_htc == true
     ind_loc = ind_loc - 1; % move one up in the fitting vector
 end
 
+% mass transfer
+% -------------------------------------------------------------------------
+mtc = [];
+if expinfo.fit_mtc
+    mtc = params(ind_loc);
+    ind_loc = ind_loc - 1;
+end
+
+fid = fopen('settings.dat','r+');
+fcontent = textscan(fid,[repmat('%s',1,8) '%*[^\n]']);
+fclose(fid);
+fcontent{1}(expinfo.mtcmodelid) = {strcat('''',expinfo.mtcmodel,'''')};
+dlmcell('settings.dat',[fcontent{1} fcontent{2:end}]);
+
+% mass transfer model - write in fitting.dat
+if expinfo.fitmtcmodel
+    % write the mtcmodel parameters in fitting.dat 
+    mtcstr = @(ii) sprintf('''mtcscale_%i''',ii);
+    mtccell = cell(2*expinfo.nummtcpar,1);
+    j = 2*expinfo.nummtcpar;
+    
+    % needs to be written 'backwards'
+    for i = expinfo.nummtcpar:-1:1  
+        mtccell{j} = params(ind_loc);
+        mtccell{j - 1} = mtcstr(i);
+        j = j - 2;
+        ind_loc = ind_loc - 1;
+    end
+
+    % write the parameters in fitting.dat
+    mtccell = [num2str(expinfo.nummtcpar); mtccell];
+    dlmcell('fitting.dat',mtccell);  
+end
+      
 % update conditions for fitting
 newconditions = expinfo.conditions;
 
@@ -163,7 +176,6 @@ end
 % timeout function
 timeout = expinfo.time_out; % s
 tstart = tic;
-% filenames
 logfname = 'simlog.log';
 
 if brutus

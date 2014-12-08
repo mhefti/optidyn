@@ -83,7 +83,7 @@ end
 condmat(i,1) = y0H2O; i = i + 1;
 y0He = 1 - y0H2O; condmat(i,1) = y0He; i = i + 1;
 % mtc 
-kH2O = 0.01; condmat(i,1) = kH2O; i = i + 1;
+kH2O = 0.093921403; condmat(i,1) = kH2O; i = i + 1;
 kHe = 1; condmat(i,1) = kHe; i = i + 1;
 % hL
 hL = 220; condmat(i,1) = hL; i = i + 1;
