@@ -19,18 +19,45 @@
 
 
 rv = linspace(0,1,1e3);
-mtcscale(1) = [50];
-mtcscale(2) = [100];
+type = 'monotonic';
 
 % scaler = @(rr) 1 + mtcscale(1)*rr.^mtcscale(2)./(1 + mtcscale(1)*rr.^mtcscale(2));
-scaler = @(rr) mtcscale(1)*exp(-mtcscale(2)*rr) + 1;
-
-           
+switch type
+    
+    case 'monotonic'
+        mtcscale(1) = [0];
+        mtcscale(2) = [8];
+        mtcscale(3) = 1;
+        scaler = @(rr)  1 - mtcscale(3)*mtcscale(1)*rr.^mtcscale(2)./...
+            (1 + mtcscale(1)*rr.^mtcscale(2));
+    
+    case 'exponential'
+        mtcscale(1) = [50];
+        mtcscale(2) = [100];
+        scaler = @(rr) mtcscale(1)*exp(-mtcscale(2)*rr) + 1;
+    
+    case 'custom'
+        mtcscale(1) = [1];
+        mtcscale(2) = 10;
+        mtcscale(3) = 53;
+        mtcscale(4) = 8;
+        mtcscale(5) = -1;
+        mtcscale6 = linspace(0,1,10);
+        scaler = @(rr) 1 + mtcscale(1)*exp(-mtcscale(2)*(rr - mtcscale(6))) + mtcscale(1) + ...
+            mtcscale(5)*mtcscale(3)*rr.^mtcscale(4)./(1 + mtcscale(3)*rr.^mtcscale(4));       
+end
            
 figure(1)
+clf
+hold on
+% for i = 1:length(mtcscale6)
+%     mtcscale(6) = mtcscale6(i);
+%     scaler = @(rr) 1 + mtcscale(1)*exp(-mtcscale(2)*(rr - mtcscale(6))) + mtcscale(1) + ...
+%         mtcscale(5)*mtcscale(3)*rr.^mtcscale(4)./(1 + mtcscale(3)*rr.^mtcscale(4));   
+%     plot(rv,scaler(rv),'k')
+%     
+% end
 plot(rv,scaler(rv),'k')
-
-
 
 % figure(1)
 % rv = linspace(0,1,1e3);

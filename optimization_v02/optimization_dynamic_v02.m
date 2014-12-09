@@ -1,4 +1,4 @@
-clc; close all; mout = 'matlaboutput.txt';
+close all; mout = 'matlaboutput.txt'; %clc;
 % clear all
 if exist(mout,'file')
     fid = fopen(mout,'w+');
@@ -7,7 +7,7 @@ end
 diary(mout);
 %% input
 exp_list = [140714 140718]; % choose dates of expts
-timecut_list = 3600*[1 2 ]; % choose at what time to cut the expt in [s]
+timecut_list = 3600*[7 9 ]; % choose at what time to cut the expt in [s]
 mode_list = ['a' 'a']; % choose also the mode (a: ads/d: des) 
 
 % all experiments
@@ -19,7 +19,7 @@ mode_list = ['a' 'a']; % choose also the mode (a: ads/d: des)
 % objective variables 
 % -------------------------------------------------------------------------
 fit_y = true; % composition of H2O: yH2O
-fit_T = false; % temperature at position 0.5*L
+fit_T = true; % temperature at position 0.5*L
 
 % fitting parameters
 % -------------------------------------------------------------------------
@@ -54,8 +54,8 @@ fitisolocs = [4:6];                 % provide which parameters of the
                                     % parameter values in prms/isotherm.dat 
                                     
 % mass transfer model
-mtcmodel = 'monotonic';             % options are: 'constant', 'tangens' or
-                                    %              'monotonic'
+mtcmodel = 'monotonic';             % options are: 'constant', 'tangens', 
+                                    % 'monotonic', 'exponential'
 fitmtc = false;                     % mass transfer coefficient
 fitmtcmodel = true;                 % fit a mtc model, note that this
                                     % doesn't fit the mtc itself, but  
@@ -80,6 +80,10 @@ nummtcpar = 2;                      % number of mtcmodel parameters (mtc
 
 % choose to fit on brutus or not
 brutmode = 'nobrutus'; % or brutus/nobrutus
+
+% objective function type
+phitype = 'DV';                     % options: - maximum likelihood estimate 'MLE'
+                                    %          - derivative weighted: 'DV'
 
 % if brutus, choose number of workers (local machine: default 2 workers)
 slaves = 16;
@@ -134,6 +138,7 @@ expinfo.fitmtcmodel = fitmtcmodel;
 expinfo.mtcmodel = mtcmodel;
 expinfo.mtcmodelid = 16;
 expinfo.nummtcpar = nummtcpar;
+expinfo.phitype = phitype;
 
 % extract # of fitting parameters: 
 numpar = numisopar;

@@ -10,7 +10,7 @@ function res = optimfcn_sa(param,y,hand,execname,expinfo,brut,initvals)
 %           execname    string w/o extension .exe
 %           expinfo     structure containing information conc experiments
 %           brut        logical flag to indicate usage of brutus
-%           initvals    vector 
+%           initvals    vector of initial guesses
 % output: 
 %           res         scalar w value of objective function
 
@@ -39,25 +39,89 @@ intercust = @(q,ii) interp1(md.(sfield('time',ii)),md.(sfield(q,ii)),...
     y.(sfield('time',ii)),'spline');
 
 
-for i = 1:expinfo.numexp
+switch expinfo.phitype
     
-    if expinfo.fity
-         ssq.(sfield('yH2O',i)) = sum( ( ...
-            y.(sfield('yH2O',i))/expinfo.maxy(i) - ...
-            intercust('yH2O',i)/expinfo.maxy(i) ...
-            ).^2);
-         res_y_sum(i) = ssq.(sfield('yH2O',i));
-    end
+    case 'MLE' % gives the maximum likelihood estimate
+        
+        for i = 1:expinfo.numexp
     
-    if expinfo.fitT
-        ssq.(sfield('T05',i)) = sum( ( ...
-            y.(sfield('T05',i))/expinfo.maxT(i) - ...
-            intercust('yH2O',i)/expinfo.maxT(i) ...
-            ).^2);
-        res_T_sum(i) = ssq.(sfield('T05',i));
-    end
-    
+            if expinfo.fity
+                ssq.(sfield('yH2O',i)) = sum( ( ...
+                    y.(sfield('yH2O',i))/expinfo.maxy(i) - ...
+                    intercust('yH2O',i)/expinfo.maxy(i) ...
+                    ).^2);
+                res_y_sum(i) = ssq.(sfield('yH2O',i));
+            end
+            
+            if expinfo.fitT
+                ssq.(sfield('T05',i)) = sum( ( ...
+                    y.(sfield('T05',i))/expinfo.maxT(i) - ...
+                    intercust('T05',i)/expinfo.maxT(i) ...
+                    ).^2);
+                res_T_sum(i) = ssq.(sfield('T05',i));
+            end
+            
+        end
+        
+        
+    case 'DV' % gives the derivative weighted MLE 
+        
+        for i = 1:expinfo.numexp
+            
+            % smoothing function handle
+            sfunc = @(iny) smooth(iny,200); % change # to control degree of
+                                            % smoothing
+            
+            % define generic function to compute the weights
+            wfunc = @(iny,inx) (iny(2:end) - iny(1:end-1))./...
+                (inx(2:end) - inx(1:end-1));
+            
+            if expinfo.fity
+                yv_mod = intercust('yH2O',i);
+                yv_exp = sfunc(y.(sfield('yH2O',i)));
+                tv_exp = y.(sfield('time',i));
+                
+                % compute the normalized weights
+                w = wfunc(yv_exp,tv_exp);
+                w = abs(w/max(w));
+                
+                % skip some points to prevent weird effects at boundaries
+                iskip = 20;
+                eskip = 20;
+                w = w(iskip:end-eskip);
+                
+                ssq.(sfield('yH2O',i)) = sum( w'*( ...
+                    yv_exp(iskip:end-eskip-1)/expinfo.maxy(i) - ...
+                    yv_mod(iskip:end-eskip-1)/expinfo.maxy(i) ...
+                    ).^2);
+                res_y_sum(i) = ssq.(sfield('yH2O',i));
+            end
+            
+            if expinfo.fitT
+                Tv_mod = intercust('T05',i);
+                Tv_exp = sfunc(y.(sfield('T05',i)));
+                tv_exp = y.(sfield('time',i));
+                
+                % compute the normalized weights
+                w = wfunc(Tv_exp,tv_exp);
+                w = abs(w/max(w));
+                
+                % skip some points to prevent weird effects at boundaries
+                iskip = 20;
+                eskip = 20;
+                w = w(iskip:end-eskip);
+                
+                ssq.(sfield('T05',i)) = sum( w'*( ...
+                    Tv_exp(iskip:end-eskip-1)/expinfo.maxT(i) - ...
+                    Tv_mod(iskip:end-eskip-1)/expinfo.maxT(i) ...
+                    ).^2);
+                res_T_sum(i) = ssq.(sfield('T05',i));
+            end
+            
+        end
+
 end
+
 
 fprintf('-------------------fitting info---------------------\n')
 
