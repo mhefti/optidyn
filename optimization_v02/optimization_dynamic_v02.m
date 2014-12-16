@@ -78,8 +78,9 @@ nummtcpar = 2;                      % number of mtcmodel parameters (mtc
 %       Hads                ]       % numpar
 % -------------------------------------------------------------------------
 
-% choose to fit on brutus or not
-brutmode = 'nobrutus'; % or brutus/nobrutus
+% choose to fit on local machin, brutus or euler
+brutmode = 'brutus'; % or brutus/nobrutus
+eulermode = true;      % **NOTE: to run on euler, brutmode = brutus !
 
 % objective function type
 phitype = 'DV';                     % options: - maximum likelihood estimate 'MLE'
@@ -139,6 +140,7 @@ expinfo.mtcmodel = mtcmodel;
 expinfo.mtcmodelid = 16;
 expinfo.nummtcpar = nummtcpar;
 expinfo.phitype = phitype;
+expinfo.eulermode = eulermode;
 
 % extract # of fitting parameters: 
 numpar = numisopar;

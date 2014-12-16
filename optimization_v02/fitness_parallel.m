@@ -178,13 +178,26 @@ timeout = expinfo.time_out; % s
 tstart = tic;
 logfname = 'simlog.log';
 
-if brutus
-    % no .exe extension in brutus environment
+
+% run on brutus
+if brutus && ~expinfo.eulermode
+   % no .exe extension in brutus environment
     execname_curr = sprintf('%s_%2.2d',execname,task_curr);
     system(sprintf('./%s>%s &',execname_curr,logfname));
-else
+end
+    
+% run on euler 
+if brutus && expinfo.eulermode 
+    execname_curr = sprintf('%s_%2.2d',execname,task_curr);
+    % need to pass some options otherwise intel compiler yields error
+    comopt = 'ARCH=x86_64; module purge; module load new intel/14.0.1 open_mpi/1.6.5 imsl/7.1;';
+    system(sprintf('%s ./%s>%s &',comopt,execname_curr,logfname));
+end
+
+% run on local machine
+if ~brutus
     execname_curr = sprintf('%s_%2.2d.exe',execname,task_curr);
-    system(sprintf('start /B %s>%s & cmd.exe /C',execname_curr,logfname));%2>&1    
+    system(sprintf('start /B %s>%s & cmd.exe /C',execname_curr,logfname));%2>&1     
 end
 
 running = true;

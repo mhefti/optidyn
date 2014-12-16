@@ -72,9 +72,9 @@ switch expinfo.phitype
             sfunc = @(iny) smooth(iny,200); % change # to control degree of
                                             % smoothing
             
-            % define generic function to compute the weights
-            wfunc = @(iny,inx) (iny(2:end) - iny(1:end-1))./...
-                (inx(2:end) - inx(1:end-1));
+            % define generic function to compute the (positive) weights
+            wfunc = @(iny,inx) abs((iny(2:end) - iny(1:end-1))./...
+                (inx(2:end) - inx(1:end-1)));
             
             if expinfo.fity
                 yv_mod = intercust('yH2O',i);
@@ -83,7 +83,7 @@ switch expinfo.phitype
                 
                 % compute the normalized weights
                 w = wfunc(yv_exp,tv_exp);
-                w = abs(w/max(w));
+                w = w/max(w);
                 
                 % skip some points to prevent weird effects at boundaries
                 iskip = 20;
@@ -104,7 +104,7 @@ switch expinfo.phitype
                 
                 % compute the normalized weights
                 w = wfunc(Tv_exp,tv_exp);
-                w = abs(w/max(w));
+                w = w/max(w);
                 
                 % skip some points to prevent weird effects at boundaries
                 iskip = 20;
