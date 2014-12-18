@@ -54,7 +54,7 @@ fitisolocs = [4:6];                 % provide which parameters of the
                                     % parameter values in prms/isotherm.dat 
                                     
 % mass transfer model
-mtc_0 = 0.5;                        % enter the base mass transfer coeff
+mtc_0 = 0.0035;                     % enter the base mass transfer coeff
                                     % *** NOTE: is overwritten if mtc0 is
                                     % fitted as well
 mtcmodel = 'monotonic';             % options are: 'constant', 'tangens', 
