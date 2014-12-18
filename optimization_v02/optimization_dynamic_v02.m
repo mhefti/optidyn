@@ -6,9 +6,9 @@ if exist(mout,'file')
 end
 diary(mout);
 %% input
-exp_list = [140714 140718]; % choose dates of expts
-timecut_list = 3600*[7 9 ]; % choose at what time to cut the expt in [s]
-mode_list = ['a' 'a']; % choose also the mode (a: ads/d: des) 
+exp_list = [140714]; % choose dates of expts
+timecut_list = 3600*[7]; % choose at what time to cut the expt in [s]
+mode_list = ['a']; % choose also the mode (a: ads/d: des) 
 
 % all experiments
 % exp_list = [140801 140801 140808 140808 140812 140714 140718]; % choose dates of expts
@@ -33,7 +33,7 @@ fitHads = true;                     % heat of adsorption; note that Hads
 fitisotype = 'Sips_Sips';           % isotherm, 'Sips_Sips or 'Do_modified'
 
 % isotherm parameter fitting
-fit_iso = false;                     % if true, dynamic isotherm fitting to
+fit_iso = false;                    % if true, dynamic isotherm fitting to
                                     % static data then the scaling factor
                                     % must be at the first position of the
                                     % initial guess - UPDATE!!!
@@ -54,6 +54,9 @@ fitisolocs = [4:6];                 % provide which parameters of the
                                     % parameter values in prms/isotherm.dat 
                                     
 % mass transfer model
+mtc_0 = 0.5;                        % enter the base mass transfer coeff
+                                    % *** NOTE: is overwritten if mtc0 is
+                                    % fitted as well
 mtcmodel = 'monotonic';             % options are: 'constant', 'tangens', 
                                     % 'monotonic', 'exponential'
 fitmtc = false;                     % mass transfer coefficient
@@ -79,7 +82,7 @@ nummtcpar = 2;                      % number of mtcmodel parameters (mtc
 % -------------------------------------------------------------------------
 
 % choose to fit on local machin, brutus or euler
-brutmode = 'brutus'; % or brutus/nobrutus
+brutmode = 'nobrutus'; % or brutus/nobrutus
 eulermode = true;      % **NOTE: to run on euler, brutmode = brutus !
 
 % objective function type
@@ -195,7 +198,7 @@ sfield = @(q,ii) sprintf('%s_%s_%s',q,num2str(expinfo.list(ii)),...
 % save the relevant data in data.('expdate')
 for i = numexp
     data.(sfield('exp',i)) = get_experiment_data(exp_list(i),...
-        brutmode,timecut_list(i),mode_list(i));
+        brutmode,timecut_list(i),mode_list(i),mtc_0);
     condmatall = [condmatall data.(sfield('exp',i)).condmat];
 end
 close all;

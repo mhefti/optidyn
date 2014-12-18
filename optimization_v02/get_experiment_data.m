@@ -1,4 +1,4 @@
-function outstruc = get_experiment_data(dateval,brutmode,timecut,mode_in) 
+function outstruc = get_experiment_data(dateval,brutmode,timecut,mode_in,mtc_0) 
 % reads the experiment output at the date = dateval from the T drive
 % input: dateval is the date of form YYMMDD as number 
 % outputs: - outstruc with time, concentration and temperature (at z = 0.5) 
@@ -8,11 +8,21 @@ if nargin == 2
 end
 %% set up paths & names
 if strcmp(brutmode,'brutus')
+    
     destpath = strcat('..',filesep,'experiments_by_date',filesep);
+    
+    if exist(destpath,'dir')
+        destpath = destpath; % do nothing
+    elseif exist(strcat('..',filesep,destpath),'dir')
+        destpath = strcat('..',filesep,destpath);
+    else
+        error('cannot find experiments_by_date directory')
+    end
+        
 else
     destpath = '\\d.ethz.ch\dfs\groups\mavt\spl\Temp\adsorption\SmallColumn\eval\experiments\experiments_by_date\';
 end
-% simpath = 'simulation\';
+
 simpath = '';
 datein = dateval;
 datestr = num2str(datein);
@@ -83,7 +93,7 @@ end
 condmat(i,1) = y0H2O; i = i + 1;
 y0He = 1 - y0H2O; condmat(i,1) = y0He; i = i + 1;
 % mtc 
-kH2O = 0.093921403; condmat(i,1) = kH2O; i = i + 1;
+kH2O = mtc_0; condmat(i,1) = kH2O; i = i + 1;
 kHe = 1; condmat(i,1) = kHe; i = i + 1;
 % hL
 hL = 220; condmat(i,1) = hL; i = i + 1;
