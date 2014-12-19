@@ -303,6 +303,8 @@ else
 end
 
 % initialize log-file
+% STOP-FLAG ------------------ DO NOT DELETE ------------------------------
+
 numpars = length(initvals);
 param_number_func = @(ii) sprintf('parameter_%2.2d\t',ii);
 headerfunc = @(ii) sprintf('%s resnorm\t',param_number_func(ii));
