@@ -6,9 +6,9 @@ if exist(mout,'file')
 end
 diary(mout);
 %% input
-exp_list = [140714]; % choose dates of expts
-timecut_list = 3600*[7]; % choose at what time to cut the expt in [s]
-mode_list = ['a']; % choose also the mode (a: ads/d: des) 
+exp_list = [140714 140718 140730]; % choose dates of expts
+timecut_list = 3600*[7 9 5]; % choose at what time to cut the expt in [s]
+mode_list = ['a' 'a' 'a']; % choose also the mode (a: ads/d: des) 
 
 % all experiments
 % exp_list = [140801 140801 140808 140808 140812 140714 140718]; % choose dates of expts

@@ -11,8 +11,9 @@ copyfile('fitness_parallel.m','output_optim/')
 copyfile('dlmcell.m','output_optim/worker_01/')
 
 % prepare for plotting
-gppath = 'D:\Users\mhefti\Documents\Projects\dynamic_experiments_modelling\20141016_hysteresis_clean_v00_jacobian_v02\prms\';
-copyfile(strcat(gppath,'plot_sim_exp_mult_comp_comm.plt'),'output_optim/worker_01');
+gsname = 'plot_sim_exp_mult_comp_comm.plt';
+gppath = 'D:\Users\mhefti\Documents\Projects\dynamic_exp_mod\20141016_hysteresis_clean_v00_jacobian_v02\prms\';
+copyfile(strcat(gppath,gsname),'output_optim/worker_01');
 copyfile(strcat(gppath,'concat.pl'),'output_optim/worker_01');
 
 % extract part of the optimization_dynamic_v02
@@ -66,8 +67,10 @@ for i = 1:nexp % for the modes
     
 end
 
+
+
 % create the string:
-comm = sprintf('gnuplot -e  "%s" %s',sys_str,nn.name);
+comm = sprintf('gnuplot -e "%s" %s',sys_str,gsname);
 system(comm)
 
 cd ../..
