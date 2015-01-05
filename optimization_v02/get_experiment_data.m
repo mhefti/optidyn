@@ -113,7 +113,7 @@ dlmwrite(strcat(simpath,'prms/parameter2.dat'),Heid,'delimiter','','-append')
 if adsmode 
     outstruc.yH2O(set_zero) = y0H2O*ones(max(set_zero),1);
 else
-    outstruc.yH2O(set_max) = outstruc.yH2O(Imax)*ones(set_max,1);
+    outstruc.yH2O(set_max) = outstruc.yH2O(Imax)*ones(max(set_max),1);
 end
 
 outstruc.t = outstruc.time(therange);

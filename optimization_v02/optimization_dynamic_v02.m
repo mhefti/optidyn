@@ -24,19 +24,11 @@ fit_T = true; % temperature at position 0.5*L
 % fitting parameters
 % -------------------------------------------------------------------------
 
-% first choose if isothermal fitting or non-isothermal
-fitisothermal = false;              % hads will be = 0 in parameter1.dat
-                                    % htc will be 1e6 in conditions.dat
-fithtc = false;                     % heat transfer coefficient
-fitHads = true;                     % heat of adsorption; note that Hads 
-                                    % should be entered in (- kJ/mol)
+% isotherm related parameters ---------------------------------------------
 fitisotype = 'Sips_Sips';           % isotherm, 'Sips_Sips or 'Do_modified'
 
-% isotherm parameter fitting
 fit_iso = false;                    % if true, dynamic isotherm fitting to
                                     % static data then the scaling factor
-                                    % must be at the first position of the
-                                    % initial guess - UPDATE!!!
 
 numisopar = 6;                      % # of isotherm parameters
                                     % ** NOTE: must also be set to the
@@ -53,7 +45,7 @@ fitisolocs = [4:6];                 % provide which parameters of the
                                     % sure to have the right isotherm 
                                     % parameter values in prms/isotherm.dat 
                                     
-% mass transfer model
+% mass transfer parameters ------------------------------------------------
 mtc_0 = 0.0035;                     % enter the base mass transfer coeff
                                     % *** NOTE: is overwritten if mtc0 is
                                     % fitted as well
@@ -64,9 +56,22 @@ fitmtcmodel = true;                 % fit a mtc model, note that this
                                     % doesn't fit the mtc itself, but  
                                     % parameters of the scaling function
                                     % specified in mtcmodel
-nummtcpar = 2;                      % number of mtcmodel parameters (mtc 
-                                    % itself excluded
+nummtcpar = 2;                      % number of mtcmodel parameters
                                     
+% heat related parameters -------------------------------------------------
+fitisothermal = false;              % hads will be = 0 in parameter1.dat
+                                    % htc will be 1e6 in conditions.dat
+fithtc = false;                     % heat transfer coefficient
+fitHads = true;                     % heat of adsorption; note that Hads 
+                                    % should be entered in (- kJ/mol)
+% heat of adsorption scaling
+hscaling = true;                    % flag if hads is scaled
+hmodel = 'custom';                  % options are: 'custom'; any other
+                                    % string results in the use of a
+                                    % constant heat of adsorption for the
+                                    % water component
+numhscalepar = 3;                   % number of parameters for the scaling 
+
 % -------------------------------------------------------------------------
 % keep the order of the fitting vector, i.e. arrange as follows: 
 % [     isopar(1)                   % 1
@@ -76,18 +81,21 @@ nummtcpar = 2;                      % number of mtcmodel parameters (mtc
 %       mtc                         % numisopar + 1
 %       mtcmodelpar_1               % numisopar + 2
 %       .                           % .
-%       mtcmodelpar_2               % numisopar + nummtcpar
-%       htc                         % numisopar + nummtcpar + 1
-%       Hads                ]       % numpar
+%       mtcmodelpar_X               % numisopar + nummtcpar + 1
+%       htc                         % numisopar + nummtcpar + 2
+%       Hads                        % numisopar + nummtcpar + 3
+%       hscalepar_1                 % numisopar + nummtcpar + 4
+%       .                           % .
+%       hscalepar_Y              ]  % numpar
 % -------------------------------------------------------------------------
 
 % choose to fit on local machin, brutus or euler
-brutmode = 'nobrutus'; % or brutus/nobrutus
-eulermode = true;      % **NOTE: to run on euler, brutmode = brutus !
+brutmode = 'nobrutus'; %  'brutus' or 'nobrutus'
+eulermode = true;      % *** NOTE: to run on euler, brutmode = 'brutus' !
 
 % objective function type
-phitype = 'DV';                     % options: - maximum likelihood estimate 'MLE'
-                                    %          - derivative weighted: 'DV'
+phitype = 'DV';              % options: - maximum likelihood estimate 'MLE'
+                             %          - derivative weighted: 'DV'
 
 % if brutus, choose number of workers (local machine: default 2 workers)
 slaves = 16;
@@ -121,6 +129,7 @@ else
     brutus = false;
 end
 
+% end of input
 %% set up experiments output
 numexp = 1:length(exp_list);
 expinfo.list = exp_list;
@@ -144,6 +153,10 @@ expinfo.mtcmodelid = 16;
 expinfo.nummtcpar = nummtcpar;
 expinfo.phitype = phitype;
 expinfo.eulermode = eulermode;
+expinfo.hscaling = hscaling; 
+expinfo.numhscalepar = numhscalepar;
+expinfo.hmodel = hmodel;
+expinfo.hmodelid = 18;
 
 % extract # of fitting parameters: 
 numpar = numisopar;
@@ -180,6 +193,10 @@ if expinfo.fitmtcmodel
     numpar = numpar + nummtcpar;
 end
 
+if expinfo.hscaling
+    numpar = numpar + numhscalepar;
+end
+
 expinfo.num_pars = numpar;
 
 fprintf('the number of fitting parameters is:           %i\n',expinfo.num_pars)
@@ -213,7 +230,6 @@ fprintf(fid,'%s',sprintf('%i %i\t\t%s',1,expinfo.numexp,tail));
 fclose(fid);
 
 expinfo.conditions = condmatall;
-% expinfo.fparamids = [16 18]; % rows of mtc and htc 
 expinfo.htc_id = 18;
 expinfo.mtc_id = 16;
 expinfo.Hads_id = 12;

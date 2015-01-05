@@ -9,8 +9,8 @@ switch type
     
     case 'monoder'
         
-        s(1) = [100];
-        s(2) = [2];
+        s(1) = [50];
+        s(2) = [1.1];
         s(3) = 1;
         % define the function
         % note: this function is derived as follows:
@@ -21,7 +21,7 @@ switch type
         % finally: 
         % der = ff(x)/ff(x_max) -> bounded in [0,1]
         der = @(rr) 4*(s(1)*rr.^s(2))./(1 + s(1)*rr.^s(2)).^2;
-        scaler = @(rr) 1 - der(rr) ;
+        scaler = @(rr) 1 - s(3)*der(rr) ;
         
     case 'normal'
         

@@ -30,6 +30,7 @@ end
 % *** NOTE: keep order of the variables, as specified in the file 
 % optimization_dynamic_v0X
 % -------------------------------------------------------------------------
+% keep the order of the fitting vector, i.e. arrange as follows: 
 % [     isopar(1)                   % 1
 %          .                        % .
 %          .                        % .
@@ -37,9 +38,12 @@ end
 %       mtc                         % numisopar + 1
 %       mtcmodelpar_1               % numisopar + 2
 %       .                           % .
-%       mtcmodelpar_2               % numisopar + nummtcpar
-%       htc                         % numisopar + nummtcpar + 1
-%       Hads                ]       % numpar
+%       mtcmodelpar_X               % numisopar + nummtcpar + 1
+%       htc                         % numisopar + nummtcpar + 2
+%       Hads                        % numisopar + nummtcpar + 3
+%       hscalepar_1                 % numisopar + nummtcpar + 4
+%       .                           % .
+%       hscalepar_Y              ]  % numpar
 % -------------------------------------------------------------------------
 
 % isotherm parameters
@@ -91,7 +95,32 @@ fclose(fid);
 % all other parameters to be fitted; 
 ind_loc = expinfo.num_pars; % start at the end of the par vector
 
-% **NOTE: keep the order of the parameters
+% **NOTE: keep the order of the parameters; add new ones as according to
+% the parameter handling list shown above
+
+% scaling of the heat of adsorption
+% -------------------------------------------------------------------------
+if expinfo.fit_isothermal && expinfo.hscaling
+    error('isothermal fit and scaling of Hads not possible')
+elseif expinfo.hscaling
+    % write the mtcmodel parameters in fitting.dat 
+    hscalestr = @(ii) sprintf('''hscale_%i''',ii);
+    hscalecell = cell(2*expinfo.numhscalepar,1);
+    j = 2*expinfo.numhscalepar;
+    
+    % needs to be written 'backwards'
+    for i = expinfo.numhscalepar:-1:1  
+        hscalecell{j} = params(ind_loc);
+        hscalecell{j - 1} = hscalestr(i);
+        j = j - 2;
+        ind_loc = ind_loc - 1;
+    end
+
+    % write the parameters in fitting.dat
+    hscalecell = [num2str(expinfo.numhscalepar); hscalecell];
+    dlmcell('hadsscaling.dat',hscalecell);  
+end
+
 
 % heat of adsorption 
 % -------------------------------------------------------------------------
@@ -131,10 +160,14 @@ if expinfo.fit_mtc
     ind_loc = ind_loc - 1;
 end
 
-fid = fopen('settings.dat','r+');
-fcontent = textscan(fid,[repmat('%s',1,8) '%*[^\n]']);
+clear fcontent
+fid = fopen('settings.dat','r+'); 
+% ensure every line has an 'end of line character'; enable eol in Notepad++
+% to check
+fcontent = textscan(fid,[repmat('%s',1,10) '%*[^\n]']);
 fclose(fid);
 fcontent{1}(expinfo.mtcmodelid) = {strcat('''',expinfo.mtcmodel,'''')};
+fcontent{1}(expinfo.hmodelid) = {strcat('''',expinfo.hmodel,'''')};
 dlmcell('settings.dat',[fcontent{1} fcontent{2:end}]);
 
 % mass transfer model - write in fitting.dat
