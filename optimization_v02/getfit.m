@@ -25,14 +25,21 @@ dirfcn = @(ii) sprintf('worker_%2.2d',ii);
 % prepare for parallel jobs    
 if parall
         
-    if brutus
-        poolobj = parcluster('BrutusLSF8h');
+    if brutus 
+        
+        if ~expinfo.eulermode % runs on Brutus
+            poolobj = parcluster('BrutusLSF8h');
+        else % runs on Euler
+            poolobj = parcluster('EulerLSF8h');
+        end
+    
         sarg = sprintf('-W %s:00 -R "rusage[mem=1000]"',num2str(expinfo.time));
         poolobj.SubmitArguments = sarg;
         jobid = getenv('LSB_JOBID');
         mkdir(jobid);
         poolobj.JobStorageLocation = jobid;
         poolobj.NumWorkers = slaves;
+    
         % sometimes the pool fails to open
         while (matlabpool('size') <= 0)
             
@@ -69,7 +76,7 @@ if parall
             
         end
         
-    end
+    end % / brutus
     
     for i=1:poolobj.NumWorkers
         
@@ -140,7 +147,7 @@ else    % if not parallel, the action happens in directory worker_01
     end
     
     
-end % / if parall
+end % / parall
 
 
 % define the objective function

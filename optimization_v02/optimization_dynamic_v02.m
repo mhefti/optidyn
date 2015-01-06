@@ -6,14 +6,19 @@ if exist(mout,'file')
 end
 diary(mout);
 %% input
-exp_list = [140714 140718 140730]; % choose dates of expts
-timecut_list = 3600*[7 9 5]; % choose at what time to cut the expt in [s]
-mode_list = ['a' 'a' 'a']; % choose also the mode (a: ads/d: des) 
 
+% choose experiments to be fitted 
+% -------------------------------------------------------------------------
 % all experiments
 % exp_list = [140801 140801 140808 140808 140812 140714 140718]; % choose dates of expts
 % timecut_list = 3600*[0.8 1.5 0.6 1 5 7 9]; % choose at what time to cut the expt
 % mode_list = ['a' 'd' 'a' 'd' 'a' 'a' 'a']; % choose also the mode (a: ads/d: des) 
+
+exp_list = [140714 140718 140730]; % choose dates of expts
+timecut_list = 3600*[7 9 5]; % choose at what time to cut the expt in [s]
+mode_list = ['a' 'a' 'a']; % choose also the mode (a: ads/d: des) 
+
+
 
 
 % objective variables 
@@ -65,7 +70,7 @@ fithtc = false;                     % heat transfer coefficient
 fitHads = true;                     % heat of adsorption; note that Hads 
                                     % should be entered in (- kJ/mol)
 % heat of adsorption scaling
-hscaling = true;                    % flag if hads is scaled
+hscaling = false;                    % flag if hads is scaled
 hmodel = 'custom';                  % options are: 'custom'; any other
                                     % string results in the use of a
                                     % constant heat of adsorption for the

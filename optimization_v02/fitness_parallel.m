@@ -167,7 +167,14 @@ fid = fopen('settings.dat','r+');
 fcontent = textscan(fid,[repmat('%s',1,10) '%*[^\n]']);
 fclose(fid);
 fcontent{1}(expinfo.mtcmodelid) = {strcat('''',expinfo.mtcmodel,'''')};
-fcontent{1}(expinfo.hmodelid) = {strcat('''',expinfo.hmodel,'''')};
+
+% make sure that hads is not scaled when hscaling == false
+if expinfo.hscaling
+    fcontent{1}(expinfo.hmodelid) = {strcat('''',expinfo.hmodel,'''')};
+else
+    fcontent{1}(expinfo.hmodelid) = {'''disabled'''};
+end
+
 dlmcell('settings.dat',[fcontent{1} fcontent{2:end}]);
 
 % mass transfer model - write in fitting.dat
@@ -210,7 +217,6 @@ end
 timeout = expinfo.time_out; % s
 tstart = tic;
 logfname = 'simlog.log';
-
 
 % run on brutus
 if brutus && ~expinfo.eulermode
