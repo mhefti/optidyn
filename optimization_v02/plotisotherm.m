@@ -20,6 +20,7 @@ params_exp_fit = load(strcat(datasource,'param_DoLang_ads'));
 exp_fit = params_exp_fit.param_DoLang_ads;
 Tshift = 0;
 acdata.ads.RH = Pvap_H2O(acdata.ads.Tdew,'Pa')./Pvap_H2O(acdata.ads.T + Tshift,'Pa');
+acdata.des.RH = Pvap_H2O(acdata.des.Tdew,'Pa')./Pvap_H2O(acdata.des.T + Tshift,'Pa');
 % exp_fit = [1114	0.0031619	21.141	33.602	9.5747];
 
 
@@ -45,25 +46,37 @@ rcol = [128,128,128]/255;
 plot(acdata.ads.RH(rr_fit),acdata.ads.n(rr_fit),'o','Color',fcol,'MarkerFaceColor',fcol)
 plot(acdata.ads.RH(rr_rest),acdata.ads.n(rr_rest),'o','Color',rcol,'MarkerFaceColor',rcol)
 % desorption data
-% plot(acdata.des.RH,acdata.des.n,'o k','MarkerFaceColor','w')
+plot(acdata.des.RH,acdata.des.n,'o k','MarkerFaceColor','w')
 
 % fits to experimental data
 plot(RHvec,model_DoLang(exp_fit,RHvec),'k','LineWidth',2)
 
 
-colmat = [254,217,118; 254,178,76;253,141,60; 240,59,32; 189,0,38];
-colmat = colmat(:,end:-1:1);
-colmat = colmat/255;
+
+% source: D:\Users\mhefti\Documents\Projects\dynamic_exp_mod\dynamic_exp_fit\
+% optimization_v02\EULER_by_date\141219_dispatch_jobs\141215_exp140714_
+%140718_SS_all_mtc_custom_fity_MLE_120\output_optim\worker_01
+
+opt_fit = [3084.761900 0.001628 1.315352 18.260737 21.608761 8.465824];
+
+
+colmat = cbrewer('qual','Paired',5);
+
 
 if strcmp(type,'sips_sips')
     
     for i=1:numseries
         [out, term1, term2] = model_SipsSips(params(i).series,RHvec);
         plot(RHvec,out,'Color',colmat(i,:),'LineWidth',2)
-        plot(RHvec,term1,'Color','r')
-        plot(RHvec,term2,'Color','b')
+        plot(RHvec,term1,'Color',colmat(i,:),'LineWidth',2)
+        plot(RHvec,term2,'Color',colmat(i,:),'LineWidth',2)
     end
     
+    [out, term1, term2] = model_SipsSips(opt_fit,RHvec);
+    plot(RHvec,out,'Color',colmat(numseries + 1,:),'LineWidth',2)
+    plot(RHvec,term1,'Color',colmat(numseries + 1,:),'LineWidth',2)
+    plot(RHvec,term2,'Color',colmat(numseries + 1,:),'LineWidth',2)
+        
 end
 
 if strcmp(type,'Do')

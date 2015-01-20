@@ -66,7 +66,7 @@ nummtcpar = 2;                      % number of mtcmodel parameters
 % heat related parameters -------------------------------------------------
 fitisothermal = false;              % hads will be = 0 in parameter1.dat
                                     % htc will be 1e6 in conditions.dat
-fithtc = false;                     % heat transfer coefficient
+fithtc = false;                     % internal heat transfer coefficient
 fitHads = true;                     % heat of adsorption; note that Hads 
                                     % should be entered in (- kJ/mol)
 % heat of adsorption scaling
@@ -76,6 +76,8 @@ hmodel = 'custom';                  % options are: 'custom'; any other
                                     % constant heat of adsorption for the
                                     % water component
 numhscalepar = 3;                   % number of parameters for the scaling 
+
+fitU = true;                        % wall-ambient coefficient
 
 % -------------------------------------------------------------------------
 % keep the order of the fitting vector, i.e. arrange as follows: 
@@ -91,7 +93,8 @@ numhscalepar = 3;                   % number of parameters for the scaling
 %       Hads                        % numisopar + nummtcpar + 3
 %       hscalepar_1                 % numisopar + nummtcpar + 4
 %       .                           % .
-%       hscalepar_Y              ]  % numpar
+%       hscalepar_Y                 % numisopar + nummtcpar + numhscalepar
+%       htc_wall_amb              ] % numpar
 % -------------------------------------------------------------------------
 
 % choose to fit on local machin, brutus or euler
@@ -162,6 +165,8 @@ expinfo.hscaling = hscaling;
 expinfo.numhscalepar = numhscalepar;
 expinfo.hmodel = hmodel;
 expinfo.hmodelid = 18;
+expinfo.fitU = fitU;
+expinfo.Uid = 2;
 
 % extract # of fitting parameters: 
 numpar = numisopar;
@@ -179,6 +184,10 @@ if expinfo.fit_mtc
 end
 
 if expinfo.fit_htc
+    numpar = numpar + 1;
+end
+
+if expinfo.fitU
     numpar = numpar + 1;
 end
 
@@ -241,7 +250,7 @@ expinfo.Hads_id = 12;
 expinfo.fity = fit_y;
 expinfo.fitT = fit_T;
 
-%% set up fitting
+%% set up fitting - note: initial_guess MUST be tab-delimited (single!)
 fid = fopen('parameters/initial_guess.txt','r');
 ins = textscan(fid,'%f%f%f','delimiter','\t','HeaderLines',1);
 

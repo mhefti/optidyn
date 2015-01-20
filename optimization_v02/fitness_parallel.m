@@ -43,7 +43,8 @@ end
 %       Hads                        % numisopar + nummtcpar + 3
 %       hscalepar_1                 % numisopar + nummtcpar + 4
 %       .                           % .
-%       hscalepar_Y              ]  % numpar
+%       hscalepar_Y                 % numisopar + nummtcpar + numhscalepar
+%       htc_wall_amb              ] % numpar
 % -------------------------------------------------------------------------
 
 % isotherm parameters
@@ -97,6 +98,18 @@ ind_loc = expinfo.num_pars; % start at the end of the par vector
 
 % **NOTE: keep the order of the parameters; add new ones as according to
 % the parameter handling list shown above
+
+% htc wall-ambient
+% -------------------------------------------------------------------------
+if expinfo.fitU 
+    fid = fopen('parameter2.dat','r+');
+    fcontent = textscan(fid,'%s%s %*[^\n]');
+    fclose(fid);
+    fcontent{1}(expinfo.Uid) = num2cell(params(ind_loc));
+    dlmcell('parameter2.dat',[fcontent{1} fcontent{2}]);
+    ind_loc = ind_loc - 1;
+end
+
 
 % scaling of the heat of adsorption
 % -------------------------------------------------------------------------
@@ -154,12 +167,7 @@ end
 
 % mass transfer
 % -------------------------------------------------------------------------
-mtc = [];
-if expinfo.fit_mtc
-    mtc = params(ind_loc);
-    ind_loc = ind_loc - 1;
-end
-
+% note: first mtcmodel
 clear fcontent
 fid = fopen('settings.dat','r+'); 
 % ensure every line has an 'end of line character'; enable eol in Notepad++
@@ -195,6 +203,13 @@ if expinfo.fitmtcmodel
     % write the parameters in fitting.dat
     mtccell = [num2str(expinfo.nummtcpar); mtccell];
     dlmcell('fitting.dat',mtccell);  
+end
+
+% note: then mtc0
+mtc = [];
+if expinfo.fit_mtc
+    mtc = params(ind_loc);
+    ind_loc = ind_loc - 1;
 end
       
 % update conditions for fitting
