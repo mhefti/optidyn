@@ -13,8 +13,9 @@ copyfile('dlmcell.m','output_optim/worker_01/')
 % prepare for plotting
 gsname = 'plot_sim_exp_mult_comp_comm.plt';
 gppath = 'D:\Users\mhefti\Documents\Projects\dynamic_exp_mod\20141016_hysteresis_clean_v00_jacobian_v02\prms\';
-copyfile(strcat(gppath,gsname),'output_optim/worker_01');
-copyfile(strcat(gppath,'concat.pl'),'output_optim/worker_01');
+gppath = 'D:\Users\mhefti\Documents\Projects\dynamic_exp_mod\dynamic_exp_fit\optimization_v02\';
+copyfile(strcat(gppath,gsname),strcat('output_optim/worker_01/',gsname),'f');
+copyfile(strcat(gppath,'concat.pl'),strcat('output_optim/worker_01/','concat.pl'),'f');
 
 % extract part of the optimization_dynamic_v02
 copyfile('optimization_dynamic_v02.m','temp.txt')

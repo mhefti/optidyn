@@ -1,4 +1,4 @@
-function outstruc = get_experiment_data(dateval,brutmode,timecut,mode_in,mtc_0) 
+function outstruc = get_experiment_data(dateval,brutmode,timecut,mode_in,mtc_0,htc_0,U_0) 
 % reads the experiment output at the date = dateval from the T drive
 % input: dateval is the date of form YYMMDD as number 
 % outputs: - outstruc with time, concentration and temperature (at z = 0.5) 
@@ -96,13 +96,13 @@ y0He = 1 - y0H2O; condmat(i,1) = y0He; i = i + 1;
 kH2O = mtc_0; condmat(i,1) = kH2O; i = i + 1;
 kHe = 1; condmat(i,1) = kHe; i = i + 1;
 % hL
-hL = 220; condmat(i,1) = hL; i = i + 1;
+hL = htc_0; condmat(i,1) = hL; i = i + 1;
 % exp #
 exnum = 1; condmat(i,1) = exnum;
 % parameter2 --------------------------------------------------------------
 i = 1; 
-UW = 200; p2mat(i,1) = UW; i = i + 1;
-UWA = 10; p2mat(i,1) = UWA; i = i + 1;
+UW = htc_0; p2mat(i,1) = UW; i = i + 1;
+UWA = U_0; p2mat(i,1) = UWA; i = i + 1;
 H2Oid = '''H2O'''; %p2mat(i,1) = H2Oid; i = i + 1;
 Heid = '''He'''; %p2mat(i,1) = Heid; i = i + 1;
 dlmwrite(strcat(simpath,'prms/parameter2.dat'),p2mat)

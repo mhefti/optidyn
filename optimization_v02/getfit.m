@@ -20,6 +20,15 @@ else
     brutus = false;
 end
 
+% write the right solver file; NOTE: if it doesn't read properly, set a
+% linebreak in the last line in solver.dat 
+fid = fopen('prms/solver.dat','r+'); 
+fcontent = textscan(fid,strcat(repmat('%s ',1,15),'%*[^\n]'));
+fclose(fid);
+fcontent{1}(expinfo.spos) = {expinfo.solver}; 
+fcontent{1}(expinfo.jpos) = {expinfo.jactype};
+dlmcell('prms/solver.dat',[fcontent{1} fcontent{2:end}]);
+
 dirfcn = @(ii) sprintf('worker_%2.2d',ii);
 % -------------------------------------------------------------------------
 % prepare for parallel jobs    
@@ -149,9 +158,7 @@ else    % if not parallel, the action happens in directory worker_01
     
 end % / parall
 
-
 % define the objective function
-
 optimfcn = @(param) optimfcn_sa(param,y,hand,execname,expinfo,brutus,initvals);
 
 % for normalization, input ones to solver

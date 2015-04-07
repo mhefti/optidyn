@@ -18,9 +18,6 @@ exp_list = [140714 140718 140730]; % choose dates of expts
 timecut_list = 3600*[7 9 5]; % choose at what time to cut the expt in [s]
 mode_list = ['a' 'a' 'a']; % choose also the mode (a: ads/d: des) 
 
-
-
-
 % objective variables 
 % -------------------------------------------------------------------------
 fit_y = true; % composition of H2O: yH2O
@@ -35,11 +32,11 @@ fitisotype = 'Sips_Sips';           % isotherm, 'Sips_Sips or 'Do_modified'
 fit_iso = false;                    % if true, dynamic isotherm fitting to
                                     % static data then the scaling factor
 
-numisopar = 6;                      % # of isotherm parameters
+numisopar = 0;                      % # of isotherm parameters
                                     % ** NOTE: must also be set to the
                                     % right value when fit_iso is enabled
 
-isoflex = true;                     % flag for individual iso-par fitting
+isoflex = false;                    % flag for individual iso-par fitting
 fitisolocs = [4:6];                 % provide which parameters of the 
                                     % isotherm should be fitted; don't have
                                     % to be subsequent: [1,3,5] possible
@@ -54,23 +51,28 @@ fitisolocs = [4:6];                 % provide which parameters of the
 mtc_0 = 0.0035;                     % enter the base mass transfer coeff
                                     % *** NOTE: is overwritten if mtc0 is
                                     % fitted as well
-mtcmodel = 'monotonic';             % options are: 'constant', 'tangens', 
+mtcmodel = 'custom';                % options: 'constant', 'tangens', 
                                     % 'monotonic', 'exponential'
 fitmtc = false;                     % mass transfer coefficient
 fitmtcmodel = true;                 % fit a mtc model, note that this
                                     % doesn't fit the mtc itself, but  
                                     % parameters of the scaling function
                                     % specified in mtcmodel
-nummtcpar = 2;                      % number of mtcmodel parameters
+nummtcpar = 5;                      % number of mtcmodel parameters
                                     
 % heat related parameters -------------------------------------------------
 fitisothermal = false;              % hads will be = 0 in parameter1.dat
                                     % htc will be 1e6 in conditions.dat
-fithtc = false;                     % internal heat transfer coefficient
-fitHads = true;                     % heat of adsorption; note that Hads 
+fithtc = true;                      % internal heat transfer coefficient
+htcmodel = 'LEVAF';                 % options: 'const', 'LEVAF'
+numhtcpar = 2;                      % number of parameters for htcmodel
+htc_0 = 397;                        % htc that is used in conditions.dat
+                                    % if fithtc = false and htcmodel =
+                                    % 'const'
+fitHads = false;                    % heat of adsorption; note that Hads 
                                     % should be entered in (- kJ/mol)
 % heat of adsorption scaling
-hscaling = false;                    % flag if hads is scaled
+hscaling = false;                   % flag if hads is scaled
 hmodel = 'custom';                  % options are: 'custom'; any other
                                     % string results in the use of a
                                     % constant heat of adsorption for the
@@ -78,32 +80,52 @@ hmodel = 'custom';                  % options are: 'custom'; any other
 numhscalepar = 3;                   % number of parameters for the scaling 
 
 fitU = true;                        % wall-ambient coefficient
-
+U_0 = 19.97;                        % U that is used in parameter2.dat 
+                                    % if fitU = false
 % -------------------------------------------------------------------------
 % keep the order of the fitting vector, i.e. arrange as follows: 
-% [     isopar(1)                   % 1
-%          .                        % .
-%          .                        % .
-%       isopar(numisopar)           % numisopar
-%       mtc                         % numisopar + 1
-%       mtcmodelpar_1               % numisopar + 2
-%       .                           % .
-%       mtcmodelpar_X               % numisopar + nummtcpar + 1
-%       htc                         % numisopar + nummtcpar + 2
-%       Hads                        % numisopar + nummtcpar + 3
-%       hscalepar_1                 % numisopar + nummtcpar + 4
-%       .                           % .
-%       hscalepar_Y                 % numisopar + nummtcpar + numhscalepar
-%       htc_wall_amb              ] % numpar
+% [     isopar(1)               % 1
+%          .                    % .
+%          .                    % .
+%       isopar(numisopar)       % numisopar
+%       mtc                     % numisopar + 1
+%       mtcmodelpar_1           % numisopar + 2
+%       .                       % .
+%       mtcmodelpar_X           % numisopar + nummtcpar + 1
+%       htc                     % numisopar + nummtcpar + 2
+%       Hads                    % numisopar + nummtcpar + 3
+%       hscalepar_1             % numisopar + nummtcpar + 4
+%       .                       % .
+%       hscalepar_Y             % numisopar + nummtcpar + numhscalepar
+%       htc_wall_amb            % numisopar + nummtcpar + numhscalepar + 1
+%       htcmodelpar_1           % numisopar + nummtcpar + numhscalepar + 2
+%       .                       % .
+%       htcmodelpar_X         ] % numpar
 % -------------------------------------------------------------------------
 
-% choose to fit on local machin, brutus or euler
-brutmode = 'nobrutus'; %  'brutus' or 'nobrutus'
-eulermode = true;      % *** NOTE: to run on euler, brutmode = 'brutus' !
+
+% choose the solver
+solver = 'LSODE';  % 'LSODE', 'LSODES', 'LSODA', 'IVPAG'; note: can vary
+jactype = 'banded'; % 'full' or 'banded'
+
+% choose to fit on local machine, brutus or euler
+cstr = computer; 
+
+if regexp(cstr,'PCWIN') 
+    brutmode = 'nobrutus'; 
+elseif regexp(cstr,'GLNX')
+    brutmode = 'brutus'; 
+else
+    error('unknown platform')
+end
+
+% should run on Euler?
+eulermode = true;
 
 % objective function type
-phitype = 'DV';              % options: - maximum likelihood estimate 'MLE'
-                             %          - derivative weighted: 'DV'
+phitype = 'MLE';             % options: - maximum likelihood estimate 'MLE'
+                             %          - derivative weighted MLE: 'DV'
+                             %          - average relative error: 'ARE'
 
 % if brutus, choose number of workers (local machine: default 2 workers)
 slaves = 16;
@@ -120,6 +142,7 @@ parallel = 'noparallel'; % or 'noparallel'
 
 % optional for MultiStart, set number of initial points (default: 2e4)
 numMSpoints = 2e4;
+
 
 % available options: 
 % -------------------------------------------------------------------------
@@ -167,12 +190,18 @@ expinfo.hmodel = hmodel;
 expinfo.hmodelid = 18;
 expinfo.fitU = fitU;
 expinfo.Uid = 2;
-
+expinfo.solver = solver; 
+expinfo.spos = 1; 
+expinfo.jactype = jactype; 
+expinfo.jpos = 2; 
+expinfo.htcmodel = htcmodel; 
+expinfo.htcmodelid = 11; 
+expinfo.numhtcpar = numhtcpar; 
 % extract # of fitting parameters: 
-numpar = numisopar;
+numpar = 0;
 
-if expinfo.fitiso
-    numpar = numpar - numisopar + 1;
+if expinfo.num_isopar ~= 0
+    numpar = numpar + numisopar;
 end
 
 if ~expinfo.fitiso && expinfo.isoflex
@@ -184,7 +213,11 @@ if expinfo.fit_mtc
 end
 
 if expinfo.fit_htc
-    numpar = numpar + 1;
+    if strcmp(expinfo.htcmodel ,'const')
+        numpar = numpar + 1;
+    else
+        numpar = numpar + numhtcpar;  
+    end
 end
 
 if expinfo.fitU
@@ -199,7 +232,7 @@ if expinfo.fit_isothermal && expinfo.fit_Hads
     error('error: are you sure to fit Hads to isothermal conditions?')
 end
 
-if expinfo.fit_htc && expinfo.fit_htc 
+if expinfo.fit_isothermal && expinfo.fit_htc 
     error('error: htc is to be fitted in isothermal conditions')
 end
 
@@ -210,6 +243,7 @@ end
 if expinfo.hscaling
     numpar = numpar + numhscalepar;
 end
+
 
 expinfo.num_pars = numpar;
 
@@ -229,7 +263,7 @@ sfield = @(q,ii) sprintf('%s_%s_%s',q,num2str(expinfo.list(ii)),...
 % save the relevant data in data.('expdate')
 for i = numexp
     data.(sfield('exp',i)) = get_experiment_data(exp_list(i),...
-        brutmode,timecut_list(i),mode_list(i),mtc_0);
+        brutmode,timecut_list(i),mode_list(i),mtc_0,htc_0,U_0);
     condmatall = [condmatall data.(sfield('exp',i)).condmat];
 end
 close all;
@@ -237,7 +271,7 @@ close all;
 % write conditions
 dlmwrite('prms/conditions.dat',condmatall,'\t')
 
-% write iterations - 
+% write iterations
 fid = fopen('prms/iterations.dat','w+');
 tail = '// first/last experiment to evaluate';
 fprintf(fid,'%s',sprintf('%i %i\t\t%s',1,expinfo.numexp,tail));
@@ -320,7 +354,7 @@ end
 
 % extract exectuable name from fortran_code
 if brutus
-    execname = 'hc_v02_J';
+    execname = 'solve_OPACK';
 else
     fexe = dir('fortran_code/*.exe');
         

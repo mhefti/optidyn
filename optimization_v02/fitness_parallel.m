@@ -31,73 +31,104 @@ end
 % optimization_dynamic_v0X
 % -------------------------------------------------------------------------
 % keep the order of the fitting vector, i.e. arrange as follows: 
-% [     isopar(1)                   % 1
-%          .                        % .
-%          .                        % .
-%       isopar(numisopar)           % numisopar
-%       mtc                         % numisopar + 1
-%       mtcmodelpar_1               % numisopar + 2
-%       .                           % .
-%       mtcmodelpar_X               % numisopar + nummtcpar + 1
-%       htc                         % numisopar + nummtcpar + 2
-%       Hads                        % numisopar + nummtcpar + 3
-%       hscalepar_1                 % numisopar + nummtcpar + 4
-%       .                           % .
-%       hscalepar_Y                 % numisopar + nummtcpar + numhscalepar
-%       htc_wall_amb              ] % numpar
+% [     isopar(1)               % 1
+%          .                    % .
+%          .                    % .
+%       isopar(numisopar)       % numisopar
+%       mtc                     % numisopar + 1
+%       mtcmodelpar_1           % numisopar + 2
+%       .                       % .
+%       mtcmodelpar_X           % numisopar + nummtcpar + 1
+%       htc                     % numisopar + nummtcpar + 2
+%       Hads                    % numisopar + nummtcpar + 3
+%       hscalepar_1             % numisopar + nummtcpar + 4
+%       .                       % .
+%       hscalepar_Y             % numisopar + nummtcpar + numhscalepar
+%       htc_wall_amb            % numisopar + nummtcpar + numhscalepar + 1
+%       htcmodelpar_1           % numisopar + nummtcpar + numhscalepar + 2
+%       .                       % .
+%       htcmodelpar_X         ] % numpar
 % -------------------------------------------------------------------------
 
 % isotherm parameters
 % -------------------------------------------------------------------------
-fid = fopen('isotherm.dat','r+');
-fcontent = textscan(fid,'%f','delimiter','\t','HeaderLines',1);
 
-% parse the isotherm parameters to be fitted
-if expinfo.fitiso % dynamic isotherm parameter fitting to static data
+if expinfo.num_isopar ~= 0
     
-    if expinfo.isoflex
-        % get the parameters that are fixed from isotherm.dat, i.e. all others
-        % than specified in expinfo.fitisolocs
-        fix_idx = setdiff(1:expinfo.num_isopar,expinfo.fitisolocs);
-        fixisopars = fcontent{1}(fix_idx);
-        outdata.iso_pars = isotherm_fit(params(1),expinfo,[fixisopars],fix_idx);
+    fid = fopen('isotherm.dat','r+');
+    fcontent = textscan(fid,'%f','delimiter','\t','HeaderLines',1);
+    
+    % parse the isotherm parameters to be fitted
+    if expinfo.fitiso % dynamic isotherm parameter fitting to static data
         
-        for i=1:numel(expinfo.fitisolocs)
-            fcontent{1}(expinfo.fitisolocs(i)) = outdata.iso_pars(i);
+        if expinfo.isoflex
+            % get the parameters that are fixed from isotherm.dat, i.e. all others
+            % than specified in expinfo.fitisolocs
+            fix_idx = setdiff(1:expinfo.num_isopar,expinfo.fitisolocs);
+            fixisopars = fcontent{1}(fix_idx);
+            outdata.iso_pars = isotherm_fit(params(1),expinfo,[fixisopars],fix_idx);
+            
+            for i=1:numel(expinfo.fitisolocs)
+                fcontent{1}(expinfo.fitisolocs(i)) = outdata.iso_pars(i);
+            end
+            
+        else
+            outdata.iso_pars = isotherm_fit(params(1),expinfo,[],[]);
+            fcontent{1}(1:numel(outdata.iso_pars)) = outdata.iso_pars;
         end
         
-    else
-        outdata.iso_pars = isotherm_fit(params(1),expinfo,[],[]);
-        fcontent{1}(1:numel(outdata.iso_pars)) = outdata.iso_pars;
-    end
-    
-else % isotherm fitting to dynamic experiments directly
-
-    if expinfo.isoflex
-   
-        for i=1:numel(expinfo.fitisolocs)
-            fcontent{1}(expinfo.fitisolocs(i)) = params(i);    
+    else % isotherm fitting to dynamic experiments directly
+        
+        if expinfo.isoflex
+            
+            for i=1:numel(expinfo.fitisolocs)
+                fcontent{1}(expinfo.fitisolocs(i)) = params(i);
+            end
+            
+        else
+            fcontent{1}(1:expinfo.num_isopar) = params(1:expinfo.num_isopar);
         end
-
-    else
-        fcontent{1}(1:expinfo.num_isopar) = params(1:expinfo.num_isopar);
-    end 
+        
+    end    
     
+    % write the contents of isotherm.dat
+    fcontent = [fcontent{1}(:)];
+    frewind(fid)
+    fprintf(fid,'%s\n',strcat('''',expinfo.iso_type,'''')); % jap, 4 apostrophes needed
+    fprintf(fid,'%f\n',fcontent);
+    fprintf(fid,'%s\n','''Inert''');
+    fclose(fid);
 end
 
-% write the contents of isotherm.dat
-fcontent = [fcontent{1}(:)];
-frewind(fid)
-fprintf(fid,'%s\n',strcat('''',expinfo.iso_type,'''')); % jap, 4 apostrophes needed
-fprintf(fid,'%f\n',fcontent);
-fprintf(fid,'%s\n','''Inert''');
-fclose(fid);
 
 % all other parameters to be fitted; 
 ind_loc = expinfo.num_pars; % start at the end of the par vector
 
 % **NOTE: keep the order of the parameters; add new ones as according to
 % the parameter handling list shown above
+
+% htc model
+% -------------------------------------------------------------------------
+if expinfo.fit_htc
+    
+    if ~strcmp(expinfo.htcmodel,'const')
+        htcstr = @(ii) sprintf('''htcmod_%i''',ii);
+        htccell = cell(2*expinfo.numhtcpar,1);
+        j = 2*expinfo.numhtcpar;
+        % needs to be written 'backwards'
+        for i = expinfo.numhtcpar:-1:1
+            htccell{j} = params(ind_loc);
+            htccell{j - 1} = htcstr(i);
+            j = j - 2;
+            ind_loc = ind_loc - 1;
+        end
+        
+        htccell = [num2str(expinfo.numhtcpar); htccell];
+        dlmcell('fitting_htc.dat',htccell);
+        
+    end
+    
+end
 
 % htc wall-ambient
 % -------------------------------------------------------------------------
@@ -109,7 +140,6 @@ if expinfo.fitU
     dlmcell('parameter2.dat',[fcontent{1} fcontent{2}]);
     ind_loc = ind_loc - 1;
 end
-
 
 % scaling of the heat of adsorption
 % -------------------------------------------------------------------------
@@ -134,7 +164,6 @@ elseif expinfo.hscaling
     dlmcell('hadsscaling.dat',hscalecell);  
 end
 
-
 % heat of adsorption 
 % -------------------------------------------------------------------------
 Hads = [];
@@ -157,17 +186,17 @@ end
 % heat transfer coefficient, mass transfer coefficient
 % -------------------------------------------------------------------------
 htc = [];
-if expinfo.fit_isothermal == true && expinfo.fit_htc == true
+if expinfo.fit_isothermal && expinfo.fit_htc
     htc = 1e6;
     warning('htc was set to 1e6 because isothermal fitting enabled')
-elseif expinfo.fit_htc == true 
+elseif expinfo.fit_htc && strcmp(expinfo.htcmodel ,'const')
     htc = params(ind_loc);
     ind_loc = ind_loc - 1; % move one up in the fitting vector
 end
 
 % mass transfer
 % -------------------------------------------------------------------------
-% note: first mtcmodel
+% note: first mtcmodel & heattransfer in settings.dat
 clear fcontent
 fid = fopen('settings.dat','r+'); 
 % ensure every line has an 'end of line character'; enable eol in Notepad++
@@ -175,6 +204,10 @@ fid = fopen('settings.dat','r+');
 fcontent = textscan(fid,[repmat('%s',1,10) '%*[^\n]']);
 fclose(fid);
 fcontent{1}(expinfo.mtcmodelid) = {strcat('''',expinfo.mtcmodel,'''')};
+
+if expinfo.fit_htc 
+    fcontent{1}(expinfo.htcmodelid) = {strcat('''',expinfo.htcmodel,'''')};
+end
 
 % make sure that hads is not scaled when hscaling == false
 if expinfo.hscaling
@@ -199,10 +232,10 @@ if expinfo.fitmtcmodel
         j = j - 2;
         ind_loc = ind_loc - 1;
     end
-
-    % write the parameters in fitting.dat
+    
     mtccell = [num2str(expinfo.nummtcpar); mtccell];
-    dlmcell('fitting.dat',mtccell);  
+    dlmcell('fitting.dat',mtccell);
+    
 end
 
 % note: then mtc0
@@ -257,6 +290,8 @@ end
 running = true;
 timeup = false;
 
+keyw = {'error','unknown','aborted','infinite','illegal'}; numkeyw = length(keyw);
+noerr_flag = ones(numkeyw,1); noerrsumi = sum(noerr_flag);
 pause(0.1);
 fid = fopen('simlog.log','r');
 
@@ -264,10 +299,15 @@ while running == true && exist(succ_dump,'file') == false
     runtime = toc(tstart);
     simlog = textscan(fid,'%s');
     frewind(fid);
-    % check if ERROR was detected in output
-    noerr_flag = isempty(cell2mat(regexp(simlog{:},'ERROR','once')));
     
-    if noerr_flag ~= true
+    % check if ERROR was detected in output
+    for jj=1:numkeyw
+        noerr_flag(jj) = isempty(cell2mat(regexpi(simlog{:},keyw(jj),'once')));
+    end
+    
+    noerrsum = sum(noerr_flag);
+    
+    if noerrsum ~= noerrsumi
         running = false;
         fprintf('--------------------ERROR-----------------------------\n')
     end
@@ -293,7 +333,7 @@ fclose(fid);
 %% generate the function output
 sfield = @(q,ii) sprintf('%s_%s_%s',q,num2str(expinfo.list(ii)),expinfo.modes(ii));
 
-if timeup || noerr_flag ~= true
+if timeup || noerrsum ~= noerrsumi
     
     for i = 1:expinfo.numexp
         outdata.(sfield('time',i)) = linspace(1,expinfo.numpoints(i),expinfo.numpoints(i));

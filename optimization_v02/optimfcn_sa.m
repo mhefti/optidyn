@@ -14,7 +14,6 @@ function res = optimfcn_sa(param,y,hand,execname,expinfo,brut,initvals)
 % output: 
 %           res         scalar w value of objective function
 
-
 % param is normalized
 param_abs = param.*initvals;
 
@@ -32,12 +31,10 @@ res_T_sum = zeros(expinfo.numexp,1);
 sfield = @(q,ii) sprintf('%s_%s_%s',q,num2str(expinfo.list(ii)),...
     expinfo.modes(ii));
 
-
 % function handle for linear interpolation
 % q is 'yH2O' or 'T05'
 intercust = @(q,ii) interp1(md.(sfield('time',ii)),md.(sfield(q,ii)),...
     y.(sfield('time',ii)),'spline');
-
 
 switch expinfo.phitype
     
@@ -47,22 +44,41 @@ switch expinfo.phitype
     
             if expinfo.fity
                 ssq.(sfield('yH2O',i)) = sum( ( ...
-                    y.(sfield('yH2O',i))/expinfo.maxy(i) - ...
-                    intercust('yH2O',i)/expinfo.maxy(i) ...
+                    y.(sfield('yH2O',i)) - .../expinfo.maxy(i) - ...
+                    intercust('yH2O',i) ... /expinfo.maxy(i) ...
                     ).^2);
-                res_y_sum(i) = ssq.(sfield('yH2O',i));
+                res_y_sum(i) = ssq.(sfield('yH2O',i))/expinfo.numpoints(i);
             end
             
             if expinfo.fitT
                 ssq.(sfield('T05',i)) = sum( ( ...
-                    y.(sfield('T05',i))/expinfo.maxT(i) - ...
-                    intercust('T05',i)/expinfo.maxT(i) ...
+                    y.(sfield('T05',i)) - .../expinfo.maxT(i) - ...
+                    intercust('T05',i) ... /expinfo.maxT(i) ...
                     ).^2);
-                res_T_sum(i) = ssq.(sfield('T05',i));
+                res_T_sum(i) = ssq.(sfield('T05',i))/expinfo.numpoints(i);
             end
             
         end
+                
+    case 'ARE'    
         
+        for i = 1:expinfo.numexp
+    
+            if expinfo.fity
+                ssq.(sfield('yH2O',i)) = sum( abs(...
+                    (intercust('yH2O',i) - y.(sfield('yH2O',i)))./ ...
+                     y.(sfield('yH2O',i))));
+                res_y_sum(i) = ssq.(sfield('yH2O',i))/expinfo.numpoints(i);
+            end
+            
+            if expinfo.fitT
+                ssq.(sfield('T05',i)) = sum( abs(...
+                    (intercust('T05',i) - y.(sfield('T05',i)))./ ...
+                     y.(sfield('T05',i))));
+                res_T_sum(i) = ssq.(sfield('T05',i))/expinfo.numpoints(i);
+            end
+            
+        end        
         
     case 'DV' % gives the derivative weighted MLE 
         
@@ -137,17 +153,34 @@ fprintf('error in experiment                    %s\n',num2str(expinfo.list(i)))
     end
     
 end
-    
+
 % if both fity and fitT are enabled, the log-likelihood is: 
 % res = sum_{i=1}^(Nexp) log(ssq_y_i) + sum_{i=1}^(Nexp) log(ssq_T_i)
 % in this way every experiment is equally weighted
-if expinfo.fity && expinfo.fitT
-    res = sum(log(res_y_sum)) + sum(log(res_T_sum));    
-elseif expinfo.fity
-    res = sum(log(res_y_sum));
-else
-    res = sum(log(res_T_sum));    
+
+if ~strcmp(expinfo.phitype,'ARE') % MLE and DV
+    
+    if expinfo.fity && expinfo.fitT
+        res = sum(log(res_y_sum)) + sum(log(res_T_sum));
+    elseif expinfo.fity
+        res = sum(log(res_y_sum));
+    else
+        res = sum(log(res_T_sum));
+    end
+    
+else % average relative error
+    
+    if expinfo.fity && expinfo.fitT
+        res = sum(res_y_sum) + sum(res_T_sum);
+    elseif expinfo.fity
+        res = sum(res_y_sum);
+    else
+        res = sum(res_T_sum);
+    end
+    
 end
+
+res = res/expinfo.numexp;
 
 % write log file 
 if expinfo.fitiso % if fitting isotherm enabled, write also isotherm pars
@@ -157,5 +190,5 @@ else
 end
 
 fprintf('current value of objective function    %f\n',res)
-
+fprintf('\n')
 
